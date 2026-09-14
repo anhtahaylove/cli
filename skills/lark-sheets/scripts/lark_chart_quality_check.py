@@ -49,6 +49,9 @@ MAX_CELL_READ_SIZE = 2_000
 MAX_SOURCE_SAMPLE_POINTS = 50
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 JPEG_SIGNATURE = b"\xff\xd8\xff"
+RIFF_SIGNATURE = b"RIFF"
+WEBP_SIGNATURE = b"WEBP"
+WEBP_SIGNATURE_OFFSET = 8
 MIN_NON_WHITE_RATIO = 0.001
 MIN_CONTINUOUS_AXIS_DATA_UTILIZATION = 0.25
 
@@ -56,6 +59,25 @@ MIN_CONTINUOUS_AXIS_DATA_UTILIZATION = 0.25
 CellBounds = tuple[int, int, int, int]
 CellCache = dict[tuple[str, str, str, bool], dict[str, Any]]
 SeriesProfile = dict[str, Any]
+
+
+def safe_thumbnail_name(value: Any) -> str:
+    name = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._")
+    return name or "chart"
+
+
+def thumbnail_file_suffix(inspection: dict[str, Any]) -> str:
+    return {"png": ".png", "jpeg": ".jpg", "webp": ".webp"}.get(
+        str(inspection.get("format") or ""), ".bin"
+    )
+
+
+def thumbnail_asset_status(inspection: dict[str, Any]) -> str:
+    if inspection.get("magic_valid") is not True:
+        return "invalid"
+    if inspection.get("blank") is True:
+        return "blank"
+    return "valid"
 
 
 def _parse_a1_bounds(cell_range: str) -> CellBounds:
@@ -354,14 +376,33 @@ def inspect_image_bytes(raw: bytes, mime_type: str) -> dict[str, Any]:
                     "blank": blank,
                     "pixel_check": "pillow_extrema",
                 }
-        except (ImportError, OSError) as exc:
+        except ImportError as exc:
             return {
                 "format": "jpeg",
                 "magic_valid": True,
                 "blank": None,
-                "pixel_check": "unavailable",
+                "pixel_check": "visual_required",
                 "pixel_check_error": str(exc),
             }
+        except OSError as exc:
+            return {
+                "format": "jpeg",
+                "magic_valid": False,
+                "blank": None,
+                "pixel_check": "invalid",
+                "pixel_check_error": str(exc),
+            }
+    if (
+        raw.startswith(RIFF_SIGNATURE)
+        and raw[WEBP_SIGNATURE_OFFSET : WEBP_SIGNATURE_OFFSET + len(WEBP_SIGNATURE)]
+        == WEBP_SIGNATURE
+    ):
+        return {
+            "format": "webp",
+            "magic_valid": True,
+            "blank": None,
+            "pixel_check": "visual_required",
+        }
     return {
         "format": mime or "unknown",
         "magic_valid": False,
@@ -447,12 +488,12 @@ def fetch_thumbnail_assets(
             item.update({"status": "invalid", "reason": str(exc)})
             files.append(item)
             continue
-        suffix = ".png" if inspection.get("format") == "png" else ".jpg"
-        path = output_dir / f"{sheet_id}_{chart_id}{suffix}"
+        suffix = thumbnail_file_suffix(inspection)
+        path = output_dir / (
+            f"{safe_thumbnail_name(sheet_id)}_{safe_thumbnail_name(chart_id)}{suffix}"
+        )
         path.write_bytes(raw)
-        status = "blank" if inspection.get("blank") is True else "valid"
-        if inspection.get("blank") is None:
-            status = "unverifiable"
+        status = thumbnail_asset_status(inspection)
         item.update({"status": status, "path": str(path), "bytes": len(raw), **inspection})
         files.append(item)
         if status == "valid":

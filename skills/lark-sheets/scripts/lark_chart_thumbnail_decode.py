@@ -21,7 +21,12 @@ import zlib
 from pathlib import Path
 from typing import Any
 
-from lark_chart_quality_check import inspect_image_bytes
+from lark_chart_quality_check import (
+    inspect_image_bytes,
+    safe_thumbnail_name,
+    thumbnail_asset_status,
+    thumbnail_file_suffix,
+)
 from lark_sheet_read_cli import LarkCliError, run_sheets
 
 
@@ -31,11 +36,6 @@ LOG_ID_RE = re.compile(r"20\d{12}[A-Fa-f0-9]{12,40}")
 
 def _log_ids(value: Any) -> list[str]:
     return sorted(set(LOG_ID_RE.findall(json.dumps(value, ensure_ascii=False))))
-
-
-def _safe_name(value: str) -> str:
-    name = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._")
-    return name or "chart"
 
 
 def _charts(payload: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
@@ -113,12 +113,12 @@ def decode_payload(
             item.update({"status": "invalid", "reason": str(exc)})
             files.append(item)
             continue
-        suffix = ".png" if inspection.get("format") == "png" else ".jpg"
-        path = output_dir / f"{_safe_name(sheet_id)}_{_safe_name(chart_id)}{suffix}"
+        suffix = thumbnail_file_suffix(inspection)
+        path = output_dir / (
+            f"{safe_thumbnail_name(sheet_id)}_{safe_thumbnail_name(chart_id)}{suffix}"
+        )
         path.write_bytes(raw)
-        status = "blank" if inspection.get("blank") is True else "valid"
-        if inspection.get("blank") is None:
-            status = "unverifiable"
+        status = thumbnail_asset_status(inspection)
         item.update({"status": status, "path": str(path.resolve()), "bytes": len(raw), **inspection})
         files.append(item)
         if status == "valid":
