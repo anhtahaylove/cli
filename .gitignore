@@ -55,7 +55,9 @@ app.log
 # purpose: a bare pattern would also match extension/platform/examples/<name>/,
 # excluding the sources themselves.
 /audit-observer
+/audit-observer.exe
 /readonly-policy
+/readonly-policy.exe
 .tmp/
 cover*.out
 
