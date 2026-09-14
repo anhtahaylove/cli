@@ -106,6 +106,61 @@ func registerServiceWithContext(ctx context.Context, parent *cobra.Command, svc 
 		}
 		resCmd.AddCommand(buildMethodCommand(ctx, f, newMethodCommandSpec(ref), nil, parent.PersistentFlags()))
 	}
+
+	// Hiding a resource keeps it out of the flattened listing, which already
+	// names every method under it. Cobra reads the same flag when completing,
+	// though, so hiding alone would strip the domain's entire native surface
+	// from `lark-cli <domain> <TAB>` while leaving every path typeable — the two
+	// surfaces would then disagree about what exists, which is the one thing the
+	// flattened listing was introduced to stop.
+	svcCmd.ValidArgsFunction = completeResourceGroups
+}
+
+// completeResourceGroups offers the resource groups the domain listing hides.
+// Cobra completes the visible children (the +shortcuts) on its own and appends
+// these, so the completed set matches what domain help lists: a group appears
+// only when a method under it is actually reachable, mirroring
+// flattenedAPIMethods, which skips a leaf a policy layer took away. Completing
+// a group whose every method is concealed would hand back a path that rejects
+// even --help.
+func completeResourceGroups(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// Only the first hop is missing: once a resource is named, Cobra finds that
+	// (hidden) command and completes its own visible method children normally.
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	var out []string
+	for _, child := range cmd.Commands() {
+		if !child.Hidden || !strings.HasPrefix(child.Name(), toComplete) {
+			continue
+		}
+		if child.Annotations[schemaPathAnnotation] != "" {
+			continue // a policy-hidden method leaf, not a resource group
+		}
+		if !hasReachableMethod(child) {
+			continue
+		}
+		out = append(out, child.Name()+"\t"+child.Short)
+	}
+	sort.Strings(out)
+	return out, cobra.ShellCompDirectiveNoFileComp
+}
+
+// hasReachableMethod reports whether any method leaf below cmd is still
+// invocable, descending through nested resource groups.
+func hasReachableMethod(cmd *cobra.Command) bool {
+	for _, child := range cmd.Commands() {
+		if child.Annotations[schemaPathAnnotation] != "" {
+			if !child.Hidden {
+				return true
+			}
+			continue
+		}
+		if hasReachableMethod(child) {
+			return true
+		}
+	}
+	return false
 }
 
 // resourceShort summarizes a resource. A catalog-supplied description wins when
