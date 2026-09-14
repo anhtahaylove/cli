@@ -29,7 +29,6 @@ type diagMethodEntry struct {
 
 type diagScopeInfo struct {
 	Scope      string `json:"scope"`
-	Recommend  bool   `json:"recommend"`
 	InPriority bool   `json:"in_priority"`
 }
 
@@ -43,11 +42,7 @@ func diagnoseCatalog() apicatalog.Catalog {
 	if err != nil {
 		panic(err)
 	}
-	catalog, err := snapshot.FullCatalog()
-	if err != nil {
-		panic(err)
-	}
-	return catalog
+	return snapshot.Catalog()
 }
 
 // ── Core logic ────────────────────────────────────────────────────────
@@ -83,7 +78,6 @@ type methodKey struct {
 
 // diagBuild builds the full output: flat methods list (merged identities) + scopes.
 func diagBuild(domains []string) diagOutput {
-	recommend := registry.LoadAutoApproveSet()
 	identities := []string{"user", "bot"}
 
 	merged := make(map[methodKey]*diagMethodEntry)
@@ -156,7 +150,7 @@ func diagBuild(domains []string) diagOutput {
 	scopes := make([]diagScopeInfo, len(scopeList))
 	for i, s := range scopeList {
 		_, inPri := priorities[s]
-		scopes[i] = diagScopeInfo{Scope: s, Recommend: recommend[s], InPriority: inPri}
+		scopes[i] = diagScopeInfo{Scope: s, InPriority: inPri}
 	}
 
 	return diagOutput{Methods: methods, Scopes: scopes}

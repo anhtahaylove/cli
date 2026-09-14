@@ -27,6 +27,7 @@ func TestEmbeddedDocsAffordanceComplementsShortcutMetadata(t *testing.T) {
 		useWhen       []string
 		tips          []string
 		prerequisites []string
+		skills        []string
 	}
 	want := map[string]expectation{
 		"+create": {
@@ -38,6 +39,13 @@ func TestEmbeddedDocsAffordanceComplementsShortcutMetadata(t *testing.T) {
 				"Match `--doc-format` to `--content`: XML is the default for rich DocxXML; use `--doc-format markdown` for Markdown input.",
 				contentGuideTip,
 				"For multiline `--content`, prefer `@file` or `-` (stdin) to avoid shell-escaping damage.",
+			},
+			skills: []string{
+				"lark-doc",
+				"lark-doc/references/lark-doc-create-workflow.md",
+				"lark-doc/references/lark-doc-create.md",
+				"lark-doc/references/lark-doc-xml.md",
+				"lark-doc/references/lark-doc-md.md",
 			},
 		},
 		"+fetch": {
@@ -99,7 +107,7 @@ func TestEmbeddedDocsAffordanceComplementsShortcutMetadata(t *testing.T) {
 				t.Fatalf("shortcut Tips = %q; docs affordance owns these tips and must remain the single source", shortcut.tips)
 			}
 
-			raw, ok := affordance.For(apicatalog.Catalog{}, "docs", command)
+			raw, ok := affordance.NewResolver(affordance.Source(), apicatalog.Catalog{}).For("docs", command)
 			if !ok {
 				t.Fatalf("embedded affordance entry docs/%s is missing", command)
 			}
@@ -115,6 +123,9 @@ func TestEmbeddedDocsAffordanceComplementsShortcutMetadata(t *testing.T) {
 			}
 			if !slices.Equal(parsed.Prerequisites, expected.prerequisites) {
 				t.Errorf("prerequisites = %q, want %q", parsed.Prerequisites, expected.prerequisites)
+			}
+			if expected.skills != nil && !slices.Equal(parsed.Skills, expected.skills) {
+				t.Errorf("skills = %q, want %q", parsed.Skills, expected.skills)
 			}
 			for _, lead := range parsed.UseWhen {
 				if normalizedCopy(lead) == normalizedCopy(shortcut.description) {

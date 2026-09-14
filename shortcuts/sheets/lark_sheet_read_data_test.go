@@ -122,6 +122,34 @@ func TestReadDataShortcuts_DryRun(t *testing.T) {
 				"value_render_option": "formatted_value",
 			},
 		},
+		{
+			name:     "+cond-format-result-get hardcodes style outputs",
+			sc:       CondFormatResultGet,
+			args:     []string{"--url", testURL, "--sheet-id", testSheetID, "--range", "A1:B2"},
+			toolName: "get_cell_ranges",
+			wantInput: map[string]interface{}{
+				"excel_id":                         testToken,
+				"sheet_id":                         testSheetID,
+				"ranges":                           []interface{}{"A1:B2"},
+				"include_styles":                   true,
+				"include_conditional_format_style": true,
+				"cell_limit":                       float64(unboundedReadLimit),
+			},
+		},
+		{
+			name:     "+cells-get --include conditional_format",
+			sc:       CellsGet,
+			args:     []string{"--url", testURL, "--sheet-id", testSheetID, "--range", "A1:B2", "--include", "conditional_format"},
+			toolName: "get_cell_ranges",
+			wantInput: map[string]interface{}{
+				"excel_id":                         testToken,
+				"sheet_id":                         testSheetID,
+				"ranges":                           []interface{}{"A1:B2"},
+				"include_conditional_format_style": true,
+				"include_styles":                   true,
+				"cell_limit":                       float64(unboundedReadLimit),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -162,6 +190,7 @@ func TestReadData_RequiresRange(t *testing.T) {
 	}{
 		{"+cells-get", CellsGet},
 		{"+dropdown-get", DropdownGet},
+		{"+cond-format-result-get", CondFormatResultGet},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -233,4 +262,69 @@ func TestCsvGet_StripRowPrefix(t *testing.T) {
 	if out["other"] != "untouched" {
 		t.Errorf("other field corrupted: %v", out["other"])
 	}
+}
+
+// TestCellsGet_MultiAreaRangeRejected pins the Excel multi-area prescription,
+// which rides the shared --range chain (chainMultiAreaRange) and so needs the
+// mounted command rather than the bare shortcut.
+// The backend answers such a range with "[90015206] invalid range", which
+// names neither the rule nor the fix; 08-29..31 reflow put 54 of +cells-get's
+// 69 rejections here.
+func TestCellsGet_MultiAreaRangeRejected(t *testing.T) {
+	t.Parallel()
+	t.Run("cells joined by commas prescribe the enclosing rectangle", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := runShortcutCapturingErr(t, shortcutFromRegistry(t, "+cells-get"), []string{
+			"--url", testURL, "--sheet-name", "s", "--range", "A3,G3,H3,J3", "--dry-run",
+		})
+		ve := requireValidation(t, err, "lists 4 separate areas")
+		if !strings.Contains(ve.Hint, `--range "A3:J3"`) {
+			t.Errorf("hint should spell the enclosing rectangle, got %q", ve.Hint)
+		}
+	})
+
+	t.Run("unordered areas still land inside the rectangle", func(t *testing.T) {
+		t.Parallel()
+		// The widest column is in the middle here. Taking the first and last
+		// area would prescribe "A3:G3", which drops the J3 the caller asked
+		// for — a range that silently returns less than they wrote.
+		_, _, err := runShortcutCapturingErr(t, shortcutFromRegistry(t, "+cells-get"), []string{
+			"--url", testURL, "--sheet-name", "s", "--range", "A3,J3,G3", "--dry-run",
+		})
+		ve := requireValidation(t, err, "lists 3 separate areas")
+		if !strings.Contains(ve.Hint, `--range "A3:J3"`) {
+			t.Errorf("hint should cover every area, got %q", ve.Hint)
+		}
+	})
+
+	t.Run("the rectangle spans both axes", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := runShortcutCapturingErr(t, shortcutFromRegistry(t, "+cells-get"), []string{
+			"--url", testURL, "--sheet-name", "s", "--range", "C5,A2,B9", "--dry-run",
+		})
+		ve := requireValidation(t, err, "lists 3 separate areas")
+		if !strings.Contains(ve.Hint, `--range "A2:C9"`) {
+			t.Errorf("hint should take the min/max of both rows and columns, got %q", ve.Hint)
+		}
+	})
+
+	t.Run("ranges joined by commas fall back to the generic fix", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := runShortcutCapturingErr(t, shortcutFromRegistry(t, "+cells-get"), []string{
+			"--url", testURL, "--sheet-name", "s", "--range", "A1:B2,D1:E2", "--dry-run",
+		})
+		ve := requireValidation(t, err, "lists 2 separate areas")
+		if strings.Contains(ve.Hint, "--range \"A1:B2:D1:E2\"") {
+			t.Errorf("hint must not invent a rectangle from two ranges, got %q", ve.Hint)
+		}
+	})
+
+	t.Run("a single continuous range still passes", func(t *testing.T) {
+		t.Parallel()
+		if _, _, err := runShortcutCapturingErr(t, shortcutFromRegistry(t, "+cells-get"), []string{
+			"--url", testURL, "--sheet-name", "s", "--range", "A3:L3", "--dry-run",
+		}); err != nil {
+			t.Fatalf("a continuous range should be accepted, got: %v", err)
+		}
+	})
 }

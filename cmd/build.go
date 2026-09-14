@@ -7,8 +7,8 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"sort"
 	"strings"
-	"sync"
 
 	"github.com/larksuite/cli/cmd/api"
 	"github.com/larksuite/cli/cmd/auth"
@@ -22,16 +22,18 @@ import (
 	"github.com/larksuite/cli/cmd/skill"
 	cmdupdate "github.com/larksuite/cli/cmd/update"
 	"github.com/larksuite/cli/cmd/whoami"
+	"github.com/larksuite/cli/extension/command"
 	"github.com/larksuite/cli/extension/platform"
 	"github.com/larksuite/cli/internal/affordance"
 	"github.com/larksuite/cli/internal/apicatalog"
 	"github.com/larksuite/cli/internal/build"
+	"github.com/larksuite/cli/internal/cmdmeta"
 	"github.com/larksuite/cli/internal/cmdpolicy"
 	"github.com/larksuite/cli/internal/cmdutil"
+	"github.com/larksuite/cli/internal/commandhost"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/hook"
 	"github.com/larksuite/cli/internal/keychain"
-	"github.com/larksuite/cli/internal/meta"
 	internalplatform "github.com/larksuite/cli/internal/platform"
 	"github.com/larksuite/cli/internal/recovery"
 	"github.com/larksuite/cli/internal/registry"
@@ -39,6 +41,7 @@ import (
 	"github.com/larksuite/cli/internal/skillref"
 	"github.com/larksuite/cli/internal/surface"
 	"github.com/larksuite/cli/shortcuts"
+	"github.com/larksuite/cli/shortcuts/common"
 	"github.com/spf13/cobra"
 )
 
@@ -46,25 +49,23 @@ import (
 type BuildOption func(*buildConfig)
 
 type buildConfig struct {
-	streams           *cmdutil.IOStreams
-	keychain          keychain.KeychainAccess
-	globals           GlobalOptions
-	invocationArgs    []string
-	presentation      restrictionPresentationConfig
-	skipPlugins       bool
-	skipStrictMode    bool
-	skipService       bool
-	deferStartup      bool
-	apiCatalog        *apicatalog.Catalog
-	snapshotOpener    func() (catalogSnapshot, error)
-	afterSnapshotOpen func()
-	hideProfileSet    bool
-}
-
-type catalogSnapshot interface {
-	ServiceNames() []string
-	Catalog(names ...string) (apicatalog.Catalog, error)
-	FullCatalog() (apicatalog.Catalog, error)
+	streams        *cmdutil.IOStreams
+	keychain       keychain.KeychainAccess
+	globals        GlobalOptions
+	invocationArgs []string
+	presentation   restrictionPresentationConfig
+	skipPlugins    bool
+	skipStrictMode bool
+	skipService    bool
+	deferStartup   bool
+	apiCatalog     *apicatalog.Catalog
+	// catalogOpener yields this build's lazy Catalog handle. Opening reads only
+	// the manifest; service bodies are parsed on first navigation.
+	catalogOpener    func() (apicatalog.Catalog, error)
+	pluginProvider   func() []platform.Plugin
+	afterCatalogOpen func()
+	hideProfileSet   bool
+	commandSets      []command.Set
 }
 
 // buildRuntime owns presentation state for exactly one command tree. Factory
@@ -76,6 +77,14 @@ type buildRuntime struct {
 	surface         *surface.Plan
 	recovery        *recovery.Projector
 	skillReferences *skillref.Resolver
+	help            *service.HelpRenderer
+}
+
+// WithStartupBrand is retained for source compatibility with wrapper mains.
+// Deprecated: the committed API catalog is brand-independent, so this option
+// no longer changes command construction.
+func WithStartupBrand(_ core.LarkBrand) BuildOption {
+	return func(*buildConfig) {}
 }
 
 // WithIO sets the IO streams for the CLI by wrapping raw reader/writers.
@@ -154,25 +163,30 @@ func WithoutStrictMode() BuildOption {
 }
 
 // WithoutServiceCommands builds only hand-authored commands. It is intended for
-// repository quality gates that should not depend on the remote OpenAPI
-// metadata command surface.
+// repository quality gates that should not depend on the generated API command
+// surface of the embedded Catalog.
 func WithoutServiceCommands() BuildOption {
 	return func(c *buildConfig) {
 		c.skipService = true
 	}
 }
 
-// WithServiceCatalog is the compatibility spelling for WithAPICatalog.
+// WithServiceCatalog uses catalog as the authoritative metadata for the entire
+// command build instead of opening the embedded snapshot. It is primarily
+// intended for deterministic inspection tools and tests.
 func WithServiceCatalog(catalog apicatalog.Catalog) BuildOption {
-	return WithAPICatalog(catalog)
-}
-
-// WithAPICatalog uses catalog as the authoritative metadata for the entire
-// command build. It is primarily intended for deterministic inspection tools
-// and tests.
-func WithAPICatalog(catalog apicatalog.Catalog) BuildOption {
 	return func(c *buildConfig) {
 		c.apiCatalog = &catalog
+	}
+}
+
+// WithCommandSets adds build-time business commands to an independently built CLI.
+// The supplied declarations are copied when this option is created and compiled
+// as one atomic contribution during command-tree construction.
+func WithCommandSets(sets ...command.Set) BuildOption {
+	captured := command.CloneSets(sets)
+	return func(c *buildConfig) {
+		c.commandSets = append(c.commandSets, command.CloneSets(captured)...)
 	}
 }
 
@@ -192,139 +206,86 @@ func Build(ctx context.Context, inv cmdutil.InvocationContext, opts ...BuildOpti
 	if cfg.invocationArgs != nil {
 		result, err := buildForArgsWithConfig(ctx, inv, cfg.invocationArgs, cfg)
 		if err != nil {
-			root := newCatalogFailureRoot(ctx, cfg, err)
-			root.SetArgs(cfg.invocationArgs)
-			return root
+			result = failedCatalogBuild(ctx, inv, cfg, err)
 		}
-		root := attachExecutionState(result)
-		root.SetArgs(append(make([]string, 0, len(cfg.invocationArgs)), cfg.invocationArgs...))
-		return root
+		// The copy must stay non-nil: Cobra treats nil args as "read os.Args",
+		// which would hand an explicitly empty invocation the host's arguments.
+		result.root.SetArgs(append([]string{}, cfg.invocationArgs...))
+		return result.root
 	}
-
-	plugins := frozenPlugins(cfg)
-	catalog, err := fullCatalog(cfg)
-	if err != nil {
-		return newCatalogFailureRoot(ctx, cfg, err)
-	}
-	_, rootCmd, _ := assembleInternal(ctx, inv, newBuildFactory(inv, cfg), catalog, nil, plugins, cfg)
+	_, rootCmd, _ := buildInternalWithConfig(ctx, inv, cfg)
 	return rootCmd
 }
 
-// BuildForArgs constructs only the command domains that args can reach. Cobra
-// remains responsible for parsing and executing args after assembly.
-func BuildForArgs(
-	ctx context.Context,
-	inv cmdutil.InvocationContext,
-	args []string,
-	opts ...BuildOption,
-) (*cobra.Command, error) {
-	cfg := resolveBuildConfig(opts)
-	result, err := buildForArgsWithConfig(ctx, inv, args, cfg)
-	if err != nil {
-		return nil, err
-	}
-	return attachExecutionState(result), nil
-}
-
-type executionStateKey struct{}
-
+// buildResult is what one assembly produces. The registry is nil when plugin
+// install failed (a FailClosed guard is installed) or no plugin produced hooks;
+// callers that wire Shutdown emit must nil-check before calling hook.Emit.
 type buildResult struct {
 	runtime  *buildRuntime
 	root     *cobra.Command
 	registry *hook.Registry
 }
 
+// buildForArgsWithConfig constructs only the command domains that args can
+// reach. Cobra remains responsible for parsing and executing args after
+// assembly. A Catalog failure is returned typed so the caller can substitute
+// failedCatalogBuild.
 func buildForArgsWithConfig(
 	ctx context.Context,
 	inv cmdutil.InvocationContext,
 	args []string,
 	cfg *buildConfig,
 ) (*buildResult, error) {
+	cfg = normalizeBuildConfig(cfg)
+	runtime, root, reg, err := assembleInternal(ctx, inv, assemblyRequest{routed: true, args: args}, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &buildResult{runtime: runtime, root: root, registry: reg}, nil
+}
+
+// failedCatalogBuild is the fail-closed assembly used when the Catalog cannot
+// be opened: a root whose every dispatch reports err, over a runtime with an
+// empty surface so recovery hints reference nothing that was not built. Every
+// build entry point that can hit a Catalog failure substitutes this result so
+// the recovery wiring cannot drift between them.
+func failedCatalogBuild(ctx context.Context, inv cmdutil.InvocationContext, cfg *buildConfig, err error) *buildResult {
+	f := cmdutil.NewDefault(cfg.streams, inv)
+	runtime := &buildRuntime{Factory: f, surface: surface.NewPlan(nil)}
+	runtime.recovery = recovery.NewProjector(func() *surface.Plan { return runtime.surface })
+	f.Recovery = runtime.recovery
+	return &buildResult{runtime: runtime, root: newCatalogFailureRoot(ctx, cfg, err)}
+}
+
+func resolveBuildConfig(opts []BuildOption) *buildConfig {
+	cfg := &buildConfig{}
+	for _, o := range opts {
+		if o != nil {
+			o(cfg)
+		}
+	}
+	return normalizeBuildConfig(cfg)
+}
+
+func normalizeBuildConfig(cfg *buildConfig) *buildConfig {
 	if cfg == nil {
 		cfg = &buildConfig{}
 	}
 	if cfg.streams == nil {
 		cfg.streams = cmdutil.SystemIO()
 	}
-	if cfg.snapshotOpener == nil {
-		cfg.snapshotOpener = func() (catalogSnapshot, error) { return registry.OpenSnapshot() }
-	}
-	plugins := frozenPlugins(cfg)
-	f := newBuildFactory(inv, cfg)
-	// Resolved at most once, and only by the branch that needs it. Reusing the
-	// Factory's resolver is required rather than convenient: it fails open the
-	// same way pruneForStrictMode does downstream, so a second detection here
-	// could make the listing and the pruned command tree disagree.
-	strictMode := sync.OnceValue(func() core.StrictMode {
-		return f.ResolveStrictMode(ctx)
-	})
-	// The index selection registers no service commands and therefore cannot
-	// observe a plugin concealment (see planSchema), so the planner has to know
-	// whether any plugin will register one. Reading the declaration rather than
-	// the installed rules is what makes the answer available this early, and it
-	// is authoritative: the framework aborts an install whose Restricts flag
-	// disagrees with whether Install actually calls Restrict.
-	pluginRestricts := func() bool { return anyPluginRestricts(plugins) }
-
-	// Version is the only deterministic no-Catalog invocation. Plugins are
-	// still installed below, and their Startup hooks run against the
-	// repository-owned root even though no Catalog commands are assembled.
-	// This first pass cannot answer catalog or Shortcut membership yet, so it
-	// only recognizes the branches that need neither.
-	preliminary := PlanAssembly(args, nil, nil, nil, nil)
-	if preliminary.Mode == AssemblyNone {
-		runtime, root, reg := assembleInternal(ctx, inv, f, apicatalog.Catalog{}, []string{}, plugins, cfg)
-		return &buildResult{runtime: runtime, root: root, registry: reg}, nil
-	}
-
-	var (
-		snapshot catalogSnapshot
-		names    []string
-	)
-	if cfg.apiCatalog != nil {
-		names = catalogServiceNames(*cfg.apiCatalog)
-	} else {
-		var err error
-		snapshot, err = cfg.snapshotOpener()
-		if err != nil {
-			return nil, err
-		}
-		names = snapshot.ServiceNames()
-	}
-	if cfg.afterSnapshotOpen != nil {
-		cfg.afterSnapshotOpen()
-	}
-
-	// Plugins can observe, wrap, restrict, and handle lifecycle events, but
-	// cannot add commands. Their frozen snapshot therefore does not broaden
-	// the built-in Catalog or Shortcut domains needed for this invocation.
-	plan := PlanAssembly(args, names, shortcuts.ShortcutServiceNames(), strictMode, pluginRestricts)
-	catalog, err := catalogForPlan(cfg, snapshot, plan, names)
-	if err != nil {
-		return nil, err
-	}
-	runtime, root, reg := assembleInternal(ctx, inv, f, catalog, plan.ShortcutDomains, plugins, cfg)
-	return &buildResult{runtime: runtime, root: root, registry: reg}, nil
-}
-
-func attachExecutionState(result *buildResult) *cobra.Command {
-	result.root.SetContext(context.WithValue(result.root.Context(), executionStateKey{}, result))
-	return result.root
-}
-
-func resolveBuildConfig(opts []BuildOption) *buildConfig {
-	cfg := &buildConfig{snapshotOpener: func() (catalogSnapshot, error) {
-		return registry.OpenSnapshot()
-	}}
-	for _, o := range opts {
-		if o != nil {
-			o(cfg)
-		}
-	}
-	if cfg.streams == nil {
-		cfg.streams = cmdutil.SystemIO()
+	if cfg.catalogOpener == nil {
+		cfg.catalogOpener = openEmbeddedCatalog
 	}
 	return cfg
+}
+
+func openEmbeddedCatalog() (apicatalog.Catalog, error) {
+	snapshot, err := registry.OpenSnapshot()
+	if err != nil {
+		return apicatalog.Catalog{}, err
+	}
+	return snapshot.Catalog(), nil
 }
 
 // buildInternal is a pure assembly function: it wires the command tree from
@@ -343,130 +304,41 @@ func frozenPlugins(cfg *buildConfig) []platform.Plugin {
 	if cfg.skipPlugins {
 		return nil
 	}
+	if cfg.pluginProvider != nil {
+		return cfg.pluginProvider()
+	}
 	return platform.RegisteredPlugins()
 }
 
-// anyPluginRestricts reports whether any frozen plugin declares it will register
-// a command restriction. Capabilities is a pre-flight declaration, which is what
-// makes the answer available before the plugins are installed; the framework
-// keeps it honest by aborting an install whose declaration disagrees with
-// whether Install actually calls Restrict.
-func anyPluginRestricts(plugins []platform.Plugin) bool {
-	for _, p := range plugins {
-		if pluginDeclaresRestrict(p) {
-			return true
-		}
+// resolveShortcutSnapshot compiles this build's business command sets and returns
+// one snapshot carrying built-in and external shortcuts together. On failure the
+// built-in snapshot is returned so assembly can install a fail-closed guard.
+func resolveShortcutSnapshot(sets []command.Set) ([]common.Shortcut, error) {
+	external, err := commandhost.CompileSets(sets)
+	if err != nil {
+		return shortcuts.AllShortcuts(), err
 	}
-	return false
-}
-
-// pluginDeclaresRestrict reads one plugin's declaration without letting a faulty
-// plugin decide how the CLI fails. Capabilities is third-party code, and calling
-// it this early moves it ahead of the install pipeline that owns panics from it:
-// unguarded, a panic here would escape as a stack trace instead of the
-// capabilities_panic envelope install produces. Recovering keeps that report
-// where it belongs, and a plugin that cannot answer is counted as restricting —
-// the same direction every other unknown takes.
-func pluginDeclaresRestrict(p platform.Plugin) (declares bool) {
-	defer func() {
-		if recover() != nil {
-			declares = true
-		}
-	}()
-	return p.Capabilities().Restricts
+	return shortcuts.AllShortcutsWithExternal(external)
 }
 
 // buildInternalWithConfig assembles the complete command tree from an
 // already-applied option snapshot. Target-aware callers use
 // buildForArgsWithConfig instead.
 func buildInternalWithConfig(ctx context.Context, inv cmdutil.InvocationContext, cfg *buildConfig) (*buildRuntime, *cobra.Command, *hook.Registry) {
-	if cfg == nil {
-		cfg = resolveBuildConfig(nil)
-	}
-	if cfg.streams == nil {
-		cfg.streams = cmdutil.SystemIO()
-	}
-	if cfg.snapshotOpener == nil {
-		cfg.snapshotOpener = func() (catalogSnapshot, error) { return registry.OpenSnapshot() }
-	}
-	catalog, err := fullCatalog(cfg)
+	cfg = normalizeBuildConfig(cfg)
+	runtime, root, reg, err := assembleInternal(ctx, inv, assemblyRequest{}, cfg)
 	if err != nil {
-		root := newCatalogFailureRoot(ctx, cfg, err)
-		f := cmdutil.NewDefault(cfg.streams, inv)
-		runtime := &buildRuntime{Factory: f, surface: surface.NewPlan(nil)}
-		runtime.recovery = recovery.NewProjector(func() *surface.Plan { return runtime.surface })
-		f.Recovery = runtime.recovery
-		return runtime, root, nil
+		failed := failedCatalogBuild(ctx, inv, cfg, err)
+		return failed.runtime, failed.root, failed.registry
 	}
-	return assembleInternal(ctx, inv, newBuildFactory(inv, cfg), catalog, nil, frozenPlugins(cfg), cfg)
+	return runtime, root, reg
 }
 
-func fullCatalog(cfg *buildConfig) (apicatalog.Catalog, error) {
+func openCatalog(cfg *buildConfig) (apicatalog.Catalog, error) {
 	if cfg.apiCatalog != nil {
 		return *cfg.apiCatalog, nil
 	}
-	snapshot, err := cfg.snapshotOpener()
-	if err != nil {
-		return apicatalog.Catalog{}, err
-	}
-	return snapshot.FullCatalog()
-}
-
-func catalogForPlan(
-	cfg *buildConfig,
-	snapshot catalogSnapshot,
-	plan AssemblyPlan,
-	names []string,
-) (apicatalog.Catalog, error) {
-	// The index selection names services without reading a shard, so it is
-	// built from the manifest names in both the injected and snapshot paths.
-	if plan.Mode == AssemblyIndex {
-		return indexCatalog(names), nil
-	}
-	if cfg.apiCatalog != nil {
-		if plan.Mode == AssemblyFull {
-			return *cfg.apiCatalog, nil
-		}
-		return selectCatalog(*cfg.apiCatalog, plan.CatalogServices), nil
-	}
-	if plan.Mode == AssemblyFull {
-		return snapshot.FullCatalog()
-	}
-	return snapshot.Catalog(plan.CatalogServices...)
-}
-
-// indexCatalog builds the name-only catalog behind AssemblyIndex. The services
-// carry no ServicePath, which is what keeps them out of command registration —
-// they exist to be listed, not to be called.
-func indexCatalog(names []string) apicatalog.Catalog {
-	services := make([]meta.Service, 0, len(names))
-	for _, name := range names {
-		services = append(services, meta.Service{Name: name})
-	}
-	return apicatalog.New(apicatalog.SourceEmbedded, services)
-}
-
-func catalogServiceNames(catalog apicatalog.Catalog) []string {
-	names := make([]string, 0, len(catalog.Services()))
-	for _, service := range catalog.Services() {
-		names = append(names, service.Name)
-	}
-	return names
-}
-
-func selectCatalog(catalog apicatalog.Catalog, names []string) apicatalog.Catalog {
-	selected := make(map[string]struct{}, len(names))
-	for _, name := range names {
-		selected[name] = struct{}{}
-	}
-	services := catalog.Services()
-	filtered := services[:0:0]
-	for _, service := range services {
-		if _, ok := selected[service.Name]; ok {
-			filtered = append(filtered, service)
-		}
-	}
-	return apicatalog.New(catalog.Source(), filtered)
+	return cfg.catalogOpener()
 }
 
 func newCatalogFailureRoot(ctx context.Context, cfg *buildConfig, catalogErr error) *cobra.Command {
@@ -489,36 +361,35 @@ func newCatalogFailureRoot(ctx context.Context, cfg *buildConfig, catalogErr err
 	return root
 }
 
-// assembleInternal is a pure assembly function. It consumes the already selected
-// Catalog, Shortcut domains, and frozen plugin snapshot; it never chooses or
-// reloads any of them.
+// assemblyRequest says how much of the domain surface one build must expand.
+// The zero value assembles every domain; a routed request lets Cobra decide
+// which single domain args reach (see routeDomains) and expands only that one.
+type assemblyRequest struct {
+	routed bool
+	args   []string
+}
+
+// assembleInternal is a pure assembly function over the frozen plugin snapshot
+// and this build's shortcut snapshot. It never reloads either of them.
+//
+// Domain expansion happens in two steps so routing and dispatch share one
+// parser: every domain is first mounted as an empty stub, Cobra's own Find
+// picks the stub (or hand-authored command) args reach, and only that domain's
+// Catalog shard and shortcuts are expanded onto the very same *cobra.Command.
+// Unselected stubs are removed before any later stage sees the tree, so the
+// target tree is a subtree of the full tree by construction.
 //
 // Returns (runtime, rootCmd, registry). The registry is nil when plugin
 // install failed (FailClosed guard installed) or when no plugin produced
 // hooks; callers that wire Shutdown emit must nil-check before calling
-// hook.Emit.
-// newBuildFactory creates the Factory for one command build. It is separate
-// from assembleInternal because the assembly plan may need to resolve strict
-// mode before the catalog it selects exists, and NewDefault installs
-// process-wide workspace and transport state that must happen exactly once.
-func newBuildFactory(inv cmdutil.InvocationContext, cfg *buildConfig) *cmdutil.Factory {
-	f := cmdutil.NewDefault(cfg.streams, inv)
-	if cfg.keychain != nil {
-		f.Keychain = cfg.keychain
-	}
-	f.SkillContent = embeddedSkillContent
-	return f
-}
-
+// hook.Emit. A non-nil error is a Catalog open or shard failure; the caller
+// substitutes a fail-closed root.
 func assembleInternal(
 	ctx context.Context,
 	inv cmdutil.InvocationContext,
-	f *cmdutil.Factory,
-	catalog apicatalog.Catalog,
-	shortcutDomains []string,
-	plugins []platform.Plugin,
+	request assemblyRequest,
 	cfg *buildConfig,
-) (*buildRuntime, *cobra.Command, *hook.Registry) {
+) (*buildRuntime, *cobra.Command, *hook.Registry, error) {
 	// cfg.globals.Profile is left zero here; it's bound to the --profile
 	// flag in RegisterGlobalFlags and filled by cobra's parse step.
 
@@ -528,7 +399,18 @@ func assembleInternal(
 	cmdpolicy.SetActive(nil)
 	internalplatform.SetActiveInventory(nil)
 
-	f.APICatalog = catalog
+	// Plugins are frozen before the Catalog opens. Any registered plugin
+	// receives the complete service tree so its policy and hook expectations
+	// cannot be bypassed by a target-only assembly; the version-only path is
+	// the one exception, since it never opens the Catalog at all.
+	plugins := frozenPlugins(cfg)
+	registeredShortcuts, commandSetErr := resolveShortcutSnapshot(cfg.commandSets)
+
+	f := cmdutil.NewDefault(cfg.streams, inv)
+	if cfg.keychain != nil {
+		f.Keychain = cfg.keychain
+	}
+	f.SkillContent = embeddedSkillContent
 	runtime := &buildRuntime{Factory: f}
 	runtime.recovery = recovery.NewProjectorWithContext(func() *surface.Plan {
 		return runtime.surface
@@ -550,17 +432,6 @@ func assembleInternal(
 	// rootUsageTemplate.
 	rootCmd.SetUsageTemplate(rootUsageTemplate)
 
-	// Framework-generated skill pointers read this build's final content and
-	// exact command surface lazily. A second Build therefore cannot rewrite
-	// help rendered by the first tree.
-	installTipsHelpFunc(rootCmd, catalog, func() fs.FS {
-		if !runtime.surface.CanReference(surface.CommandSkillsRead) {
-			return nil
-		}
-		return runtime.SkillContent
-	}, func() *skillref.Resolver {
-		return runtime.skillReferences
-	}, runtime.recovery)
 	rootCmd.SilenceErrors = true
 	// SilenceUsage as a static field (not only in PersistentPreRun) so it also
 	// covers flag-parse errors, which fail before PreRun runs — otherwise cobra
@@ -576,23 +447,92 @@ func assembleInternal(
 		f.CurrentCommand = cmd
 	}
 
+	// Version is the only deterministic no-Catalog invocation: it must succeed
+	// even when the embedded Catalog is corrupt. Plugins are still installed
+	// below, and their Startup hooks run against the repository-owned root.
+	var catalog apicatalog.Catalog
+	versionOnly := request.routed && isVersionOnlyInvocation(rootCmd, request.args)
+	if !versionOnly {
+		var err error
+		catalog, err = openCatalog(cfg)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if cfg.afterCatalogOpen != nil {
+			cfg.afterCatalogOpen()
+		}
+	}
+	f.APICatalog = catalog
+	f.Affordance = affordance.NewResolver(affordance.Source(), catalog)
+
+	// Framework-generated help reads this build's final content and exact
+	// command surface lazily. A second Build therefore cannot rewrite help
+	// rendered by the first tree.
+	runtime.help = &service.HelpRenderer{
+		Guidance: f.Affordance,
+		SkillContent: func() fs.FS {
+			if !runtime.surface.CanReference(surface.CommandSkillsRead) {
+				return nil
+			}
+			return runtime.SkillContent
+		},
+		SkillReferences: func() *skillref.Resolver { return runtime.skillReferences },
+		CanReferenceSchema: func() bool {
+			return runtime.recovery == nil || runtime.recovery.CanReference(recovery.TargetSchema)
+		},
+	}
+	installTipsHelpFunc(rootCmd, runtime.help)
+
 	rootCmd.AddCommand(cmdconfig.NewCmdConfigWithRecovery(f, runtime.recovery))
-	rootCmd.AddCommand(auth.NewCmdAuthWithRecovery(f, runtime.recovery))
+	rootCmd.AddCommand(auth.NewCmdAuthWithRecoveryAndShortcuts(f, runtime.recovery, registeredShortcuts))
 	rootCmd.AddCommand(profile.NewCmdProfile(f))
 	rootCmd.AddCommand(doctor.NewCmdDoctorWithRecovery(f, runtime.recovery))
 	rootCmd.AddCommand(whoami.NewCmdWhoamiWithRecovery(f, runtime.recovery))
 	rootCmd.AddCommand(api.NewCmdApiWithContext(ctx, f, nil))
 	rootCmd.AddCommand(schema.NewCmdSchemaWithVisibility(f, func(path []string) bool {
 		return runtime.surface.CanReference(surface.CommandID(strings.Join(path, "/")))
-	}, nil))
+	}, nil, schema.WithConcealment(func() bool { return anyPluginRestricts(plugins) })))
 	rootCmd.AddCommand(completion.NewCmdCompletion(f))
 	rootCmd.AddCommand(cmdupdate.NewCmdUpdate(f))
 	rootCmd.AddCommand(cmdevent.NewCmdEvents(f))
 	rootCmd.AddCommand(skill.NewCmdSkill(f))
+
+	var catalogNames []string
 	if !cfg.skipService {
-		service.RegisterServiceCommandsWithContext(ctx, rootCmd, f)
+		catalogNames = catalog.Names()
 	}
-	shortcuts.RegisterShortcutsForDomainsWithContext(ctx, rootCmd, f, shortcutDomains)
+	shortcutDomains := shortcuts.ServiceNamesOf(registeredShortcuts)
+	stubs := mountDomainStubs(rootCmd, catalogNames, shortcutDomains)
+
+	selected := selectAllDomains
+	switch {
+	case versionOnly:
+		selected = selectNoDomains
+	case request.routed:
+		selected = routeDomains(rootCmd, request.args, catalogNames, shortcutDomains)
+		if len(plugins) > 0 {
+			selected = selectAllDomains
+		}
+	}
+
+	if !cfg.skipService {
+		names := selected.pick(catalogNames)
+		if err := catalog.Preload(names...); err != nil {
+			return nil, nil, nil, err
+		}
+		service.RegisterServiceCommandsForNames(ctx, rootCmd, f, catalog, names)
+	}
+	shortcuts.RegisterShortcutSnapshotForDomainsWithContext(ctx, rootCmd, f, registeredShortcuts, selected.shortcutSelection())
+	for name, stub := range stubs {
+		if !selected.includes(name) {
+			rootCmd.RemoveCommand(stub)
+		}
+	}
+
+	if commandSetErr != nil {
+		installCommandSetErrorGuard(rootCmd, commandSetErr)
+		return finalizeFailedBuild(runtime, rootCmd)
+	}
 
 	classifyRootCommands(rootCmd)
 
@@ -682,15 +622,202 @@ func assembleInternal(
 		if err := emitStartup(ctx, hookRegistry); err != nil {
 			installPluginLifecycleErrorGuard(rootCmd, err)
 			recordInventory(installResult)
-			return runtime, rootCmd, nil
+			return runtime, rootCmd, nil, nil
 		}
 	}
 
 	recordInventory(installResult)
-	return runtime, rootCmd, hookRegistry
+	return runtime, rootCmd, hookRegistry, nil
 }
 
-func finalizeFailedBuild(runtime *buildRuntime, root *cobra.Command) (*buildRuntime, *cobra.Command, *hook.Registry) {
+func finalizeFailedBuild(runtime *buildRuntime, root *cobra.Command) (*buildRuntime, *cobra.Command, *hook.Registry, error) {
 	finalizeRootCommandGroups(root, runtime.surface)
-	return runtime, root, nil
+	return runtime, root, nil, nil
+}
+
+// isVersionOnlyInvocation reports whether args ask Cobra for nothing but the
+// root version: the root flag set parses them cleanly, --version is set, --help
+// is not, and no positional token remains that could name a command. Cobra's
+// own execute path makes the same decision, so this never diverges from what
+// Execute would print.
+//
+// The probe parses on a throwaway root carrying the same RegisterGlobalFlags
+// definitions plus Cobra's default help/version flags. Parsing the real root
+// would leave its flag values set, and a fail-closed guard later disables flag
+// parsing on that root, so a stale value there could let --version bypass the
+// guard.
+func isVersionOnlyInvocation(root *cobra.Command, args []string) bool {
+	// Two Cobra decisions must both land on the root before the Catalog can be
+	// skipped. Find runs first, before --help/--version exist, on a root that
+	// has subcommands: `--version --profile x` swallows --profile there and
+	// leaves x as an unknown command whose error lists the full tree, so it is
+	// not a version-only invocation even though the flag parse below says so.
+	dispatch := &cobra.Command{Use: root.Use}
+	RegisterGlobalFlags(dispatch.PersistentFlags(), &GlobalOptions{})
+	dispatch.AddCommand(&cobra.Command{Use: "placeholder"})
+	if target, _, err := dispatch.Find(args); err != nil || target != dispatch {
+		return false
+	}
+
+	probe := &cobra.Command{Use: root.Use, Version: root.Version}
+	RegisterGlobalFlags(probe.PersistentFlags(), &GlobalOptions{})
+	probe.InitDefaultHelpFlag()
+	probe.InitDefaultVersionFlag()
+	if err := probe.ParseFlags(args); err != nil {
+		return false
+	}
+	flags := probe.Flags()
+	if len(flags.Args()) != 0 {
+		return false
+	}
+	// Cobra prints the version only when the flag's value is true; a spelled-out
+	// `--version=false` falls through to the root help, which needs the tree.
+	version, err := flags.GetBool("version")
+	if err != nil {
+		return false
+	}
+	return version && !flags.Changed("help")
+}
+
+// domainSelection is the outcome of routing: which mounted domains to expand.
+// A nil set with all=false expands nothing (hand-authored or version targets).
+type domainSelection struct {
+	all   bool
+	names map[string]struct{}
+}
+
+var (
+	selectAllDomains = domainSelection{all: true}
+	selectNoDomains  = domainSelection{}
+)
+
+func selectDomain(name string) domainSelection {
+	return domainSelection{names: map[string]struct{}{name: {}}}
+}
+
+func (s domainSelection) includes(name string) bool {
+	if s.all {
+		return true
+	}
+	_, ok := s.names[name]
+	return ok
+}
+
+// pick returns the subset of candidates this selection expands, preserving
+// candidate order. It never returns nil for an empty selection so callers can
+// distinguish "none" from the shortcut registrar's nil-means-all convention.
+func (s domainSelection) pick(candidates []string) []string {
+	out := make([]string, 0, len(candidates))
+	for _, name := range candidates {
+		if s.includes(name) {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
+// shortcutSelection translates to RegisterShortcutSnapshotForDomainsWithContext's
+// contract: nil mounts every domain, a non-nil empty slice mounts none.
+func (s domainSelection) shortcutSelection() []string {
+	if s.all {
+		return nil
+	}
+	out := make([]string, 0, len(s.names))
+	for name := range s.names {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// mountDomainStubs adds one empty command per targetable domain so Cobra can
+// route to it. A domain whose name is already a hand-authored root command
+// (event) is a shared root: the shortcuts expand onto the existing command, so
+// no stub is needed. Stubs carry only routing identity (name and aliases);
+// expansion fills description and children, and unselected stubs are removed.
+func mountDomainStubs(root *cobra.Command, catalogNames, shortcutDomains []string) map[string]*cobra.Command {
+	existing := make(map[string]struct{})
+	for _, cmd := range root.Commands() {
+		existing[cmd.Name()] = struct{}{}
+	}
+	stubs := make(map[string]*cobra.Command)
+	mount := func(name string) {
+		if _, taken := existing[name]; taken {
+			return
+		}
+		existing[name] = struct{}{}
+		stub := &cobra.Command{Use: name, Aliases: shortcuts.ServiceAliases(name)}
+		root.AddCommand(stub)
+		stubs[name] = stub
+	}
+	for _, name := range catalogNames {
+		mount(name)
+	}
+	for _, name := range shortcutDomains {
+		mount(name)
+	}
+	return stubs
+}
+
+// routeDomains lets Cobra's Find decide which root child args reach and maps
+// it to a domain selection. Find is called on the root exactly as ExecuteC
+// will call it: no flag is registered here that ExecuteC would not have
+// registered at that point (in particular --help/--version are added only
+// after Find), so routing cannot disagree with execution. Anything Find cannot
+// resolve — the bare root, a leading --help/--version, an unknown first token —
+// conservatively expands every domain so Cobra's real error, help, and version
+// paths see the complete tree.
+func routeDomains(root *cobra.Command, args []string, catalogNames, shortcutDomains []string) domainSelection {
+	target, _, err := root.Find(args)
+	if err != nil || target == nil || target == root {
+		return selectAllDomains
+	}
+	if cmdmeta.RequiresFullTree(target) {
+		return selectAllDomains
+	}
+	for target.Parent() != root {
+		target = target.Parent()
+	}
+	name := target.Name()
+	for _, domain := range catalogNames {
+		if domain == name {
+			return selectDomain(name)
+		}
+	}
+	for _, domain := range shortcutDomains {
+		if domain == name {
+			return selectDomain(name)
+		}
+	}
+	return selectNoDomains
+}
+
+// anyPluginRestricts reports whether any frozen plugin declares it will register
+// a command restriction. Capabilities is a pre-flight declaration, which is what
+// makes the answer available before the plugins are installed; the framework
+// keeps it honest by aborting an install whose declaration disagrees with
+// whether Install actually calls Restrict.
+func anyPluginRestricts(plugins []platform.Plugin) bool {
+	for _, p := range plugins {
+		if pluginDeclaresRestrict(p) {
+			return true
+		}
+	}
+	return false
+}
+
+// pluginDeclaresRestrict reads one plugin's declaration without letting a faulty
+// plugin decide how the CLI fails. Capabilities is third-party code, and calling
+// it this early moves it ahead of the install pipeline that owns panics from it:
+// unguarded, a panic here would escape as a stack trace instead of the
+// capabilities_panic envelope install produces. Recovering keeps that report
+// where it belongs, and a plugin that cannot answer is counted as restricting —
+// the same direction every other unknown takes.
+func pluginDeclaresRestrict(p platform.Plugin) (declares bool) {
+	defer func() {
+		if recover() != nil {
+			declares = true
+		}
+	}()
+	return p.Capabilities().Restricts
 }

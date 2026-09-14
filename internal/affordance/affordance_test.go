@@ -5,6 +5,8 @@ package affordance
 
 import (
 	"encoding/json"
+	"io/fs"
+	"slices"
 	"testing"
 	"testing/fstest"
 
@@ -32,7 +34,7 @@ const fixtureMD = "# approval\n" +
 	"```\n"
 
 func TestFor(t *testing.T) {
-	prev := mdSource
+	prev := Source()
 	t.Cleanup(func() { SetSource(prev) }) // SetSource mutates package state; restore for test isolation
 	SetSource(fstest.MapFS{"approval.md": &fstest.MapFile{Data: []byte(fixtureMD)}})
 
@@ -73,13 +75,24 @@ func TestFor(t *testing.T) {
 	if skill, ok := DomainSkill("approval"); !ok || skill != "lark-approval" {
 		t.Errorf("DomainSkill(approval) = %q, %v; want lark-approval, true", skill, ok)
 	}
+	if skills, ok := DomainSkills("approval"); !ok || !slices.Equal(skills, []string{"lark-approval"}) {
+		t.Errorf("DomainSkills(approval) = %v, %v; want [lark-approval], true", skills, ok)
+	} else {
+		skills[0] = "mutated"
+		if cached, _ := DomainSkills("approval"); !slices.Equal(cached, []string{"lark-approval"}) {
+			t.Errorf("DomainSkills returned mutable cache storage: %v", cached)
+		}
+	}
 	if skill, ok := DomainSkill("no_such_service"); ok || skill != "" {
 		t.Errorf("DomainSkill(no_such_service) = %q, %v; want empty, false", skill, ok)
+	}
+	if skills, ok := DomainSkills("no_such_service"); ok || skills != nil {
+		t.Errorf("DomainSkills(no_such_service) = %v, %v; want nil, false", skills, ok)
 	}
 }
 
 func TestFor_APICatalogCommandFormResolver(t *testing.T) {
-	prev := mdSource
+	prev := Source()
 	t.Cleanup(func() { SetSource(prev) })
 	SetSource(fstest.MapFS{"drive.md": &fstest.MapFile{Data: []byte(
 		"# drive\n\n## files list\nList files.\n",
@@ -98,12 +111,10 @@ func TestFor_APICatalogCommandFormResolver(t *testing.T) {
 	}
 }
 
-func TestFor_CacheIsolatedByAPICatalogMapping(t *testing.T) {
-	prev := mdSource
-	t.Cleanup(func() { SetSource(prev) })
-	SetSource(fstest.MapFS{"drive.md": &fstest.MapFile{Data: []byte(
+func TestResolver_MappingFollowsItsOwnCatalog(t *testing.T) {
+	source := fstest.MapFS{"drive.md": &fstest.MapFile{Data: []byte(
 		"# drive\n\n## files list\nList files.\n",
-	)}})
+	)}}
 	catalog := func(methodID string) apicatalog.Catalog {
 		service := meta.ServiceFromMap(map[string]interface{}{
 			"name": "drive",
@@ -115,17 +126,89 @@ func TestFor_CacheIsolatedByAPICatalogMapping(t *testing.T) {
 		})
 		return apicatalog.New(apicatalog.SourceEmbedded, []meta.Service{service})
 	}
-	first := catalog("file.list")
-	second := catalog("file.list.v2")
+	first := NewResolver(source, catalog("file.list"))
+	second := NewResolver(source, catalog("file.list.v2"))
 
-	if _, ok := For(first, "drive", "file.list"); !ok {
-		t.Fatal("first catalog mapping did not resolve")
+	if _, ok := first.For("drive", "file.list"); !ok {
+		t.Fatal("first resolver mapping did not resolve")
 	}
-	if _, ok := For(second, "drive", "file.list.v2"); !ok {
-		t.Fatal("second catalog reused the first catalog's cached mapping")
+	if _, ok := second.For("drive", "file.list.v2"); !ok {
+		t.Fatal("second resolver did not apply its own catalog mapping")
 	}
-	if _, ok := For(second, "drive", "file.list"); ok {
-		t.Fatal("second catalog exposed an overlay keyed by the first catalog")
+	if _, ok := second.For("drive", "file.list"); ok {
+		t.Fatal("second resolver exposed an overlay keyed by the first catalog")
+	}
+}
+
+// countingFS records how often each file is opened so the test can pin that a
+// Resolver reads and maps a service exactly once, including a missing file.
+type countingFS struct {
+	fstest.MapFS
+	opens map[string]int
+}
+
+func (c *countingFS) Open(name string) (fs.File, error) {
+	c.opens[name]++
+	return c.MapFS.Open(name)
+}
+
+// ReadFile shadows MapFS's fast path so fs.ReadFile is counted too.
+func (c *countingFS) ReadFile(name string) ([]byte, error) {
+	c.opens[name]++
+	return c.MapFS.ReadFile(name)
+}
+
+func TestResolver_ReadsAndMapsEachServiceOnce(t *testing.T) {
+	source := &countingFS{
+		MapFS: fstest.MapFS{"drive.md": &fstest.MapFile{Data: []byte(
+			"# drive\n> skill: lark-drive\n\n## files list\nList files.\n\n## files get\nGet.\n",
+		)}},
+		opens: map[string]int{},
+	}
+	service := meta.ServiceFromMap(map[string]interface{}{
+		"name": "drive",
+		"resources": map[string]interface{}{
+			"files": map[string]interface{}{"methods": map[string]interface{}{
+				"list": map[string]interface{}{"id": "file.list", "httpMethod": "GET"},
+				"get":  map[string]interface{}{"id": "file.get", "httpMethod": "GET"},
+			}},
+		},
+	})
+	r := NewResolver(source, apicatalog.New(apicatalog.SourceEmbedded, []meta.Service{service}))
+
+	for _, id := range []string{"file.list", "file.get", "file.list", "file.missing"} {
+		r.For("drive", id)
+	}
+	r.DomainSkill("drive")
+	r.DomainSkills("drive")
+	if got := source.opens["drive.md"]; got != 1 {
+		t.Fatalf("drive.md opened %d times, want 1", got)
+	}
+
+	for range 3 {
+		if _, ok := r.For("calendar", "x.y"); ok {
+			t.Fatal("service without guidance must report no overlay")
+		}
+	}
+	if got := source.opens["calendar.md"]; got != 1 {
+		t.Fatalf("missing calendar.md probed %d times, want 1 (absence is cached)", got)
+	}
+}
+
+func TestResolver_NilAndSourcelessAreSilent(t *testing.T) {
+	var nilResolver *Resolver
+	if _, ok := nilResolver.For("drive", "file.list"); ok {
+		t.Fatal("nil Resolver must report no guidance")
+	}
+	if _, ok := nilResolver.DomainSkills("drive"); ok {
+		t.Fatal("nil Resolver must report no skills")
+	}
+	r := NewResolver(nil, apicatalog.Catalog{})
+	if _, ok := r.For("drive", "file.list"); ok {
+		t.Fatal("Resolver without a source must report no guidance")
+	}
+	if _, ok := r.DomainSkill("drive"); ok {
+		t.Fatal("Resolver without a source must report no skill")
 	}
 }
 
@@ -163,6 +246,23 @@ func TestParseDomainMD_SkillsMerge(t *testing.T) {
 	}
 	if a := got.methods["bar"]; len(a.Skills) != 1 || a.Skills[0] != "lark-d" {
 		t.Errorf("bar skills = %v, want [lark-d] (domain default inherited)", a.Skills)
+	}
+}
+
+// The reserved domain-level ## Skills section controls domain-help navigation
+// only. The canonical > skill: remains first and is still the sole default
+// inherited by commands.
+func TestParseDomainMD_DomainSkills(t *testing.T) {
+	md := "# d\n> skill: lark-d\n\n" +
+		"## Skills  \n- lark-workflow\n- `lark-d`\n- lark-shared\n\n" +
+		"## foo\ndoes foo.\n\n### Skills\n- lark-command\n"
+	got := parseDomainMD([]byte(md), nil)
+
+	if want := []string{"lark-d", "lark-workflow", "lark-shared"}; !slices.Equal(got.domainSkills, want) {
+		t.Errorf("domain skills = %v, want %v", got.domainSkills, want)
+	}
+	if want := []string{"lark-d", "lark-command"}; !slices.Equal(got.methods["foo"].Skills, want) {
+		t.Errorf("foo skills = %v, want %v; domain-only skills must not leak into commands", got.methods["foo"].Skills, want)
 	}
 }
 

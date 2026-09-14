@@ -11,7 +11,7 @@
           "id": "multi_entity.search",
           "path": "multi_entity/search",
           "httpMethod": "POST",
-          "description": "Multi-entity search",
+          "description": "Search contacts for composing email",
           "parameters": {
             "user_id_type": {
               "type": "string",
@@ -43,12 +43,14 @@
             "query": {
               "type": "string",
               "description": "Search keywords; Data verification rules: Length range: 1 character to 50 characters",
-              "required": true
+              "required": true,
+              "example": "周会"
             },
             "size": {
               "type": "integer",
               "description": "Number of data bars obtained, Default 20, support 1-20",
               "required": false,
+              "example": 20,
               "max": "20",
               "min": "1"
             }
@@ -62,49 +64,58 @@
                 "type": {
                   "type": "string",
                   "description": "Identifies what the current entity is (e.g. user, chat, etc.)",
-                  "required": false
+                  "required": false,
+                  "example": "user"
                 },
                 "id": {
                   "type": "string",
                   "description": "unique identifier ID",
-                  "required": false
+                  "required": false,
+                  "example": "6911188411932033028"
                 },
                 "name": {
                   "type": "string",
                   "description": "name",
-                  "required": false
+                  "required": false,
+                  "example": "张三"
                 },
                 "email": {
                   "type": "string",
                   "description": "email address",
-                  "required": false
+                  "required": false,
+                  "example": "user@example.com"
                 },
                 "display_name": {
                   "type": "string",
                   "description": "Remark name",
-                  "required": false
+                  "required": false,
+                  "example": "备注名"
                 },
                 "member_count": {
                   "type": "integer",
                   "description": "number of group members",
                   "required": false,
+                  "example": 128,
                   "max": "128",
                   "min": "0"
                 },
                 "user_id": {
                   "type": "string",
                   "description": "user ID",
-                  "required": false
+                  "required": false,
+                  "example": "ou_2d131f4c3a28b0"
                 },
                 "department": {
                   "type": "string",
                   "description": "Department information",
-                  "required": false
+                  "required": false,
+                  "example": "飞书研发团队"
                 },
                 "chat_id": {
                   "type": "string",
                   "description": "Group Chat or Session ID",
                   "required": false,
+                  "example": "oc_40ed357053e34b9",
                   "annotations": [
                     "open:open_x_id"
                   ]
@@ -112,14 +123,16 @@
                 "tag": {
                   "type": "string",
                   "description": "label",
-                  "required": false
+                  "required": false,
+                  "example": "超大群/部门群/邮箱联系人/邮件组/外部"
                 }
               }
             },
             "notice": {
               "type": "string",
               "description": "Search for supplementary prompt information, returning additional instructions for this search, such as: query was truncated; search results are incomplete, etc",
-              "required": false
+              "required": false,
+              "example": "The query is too long and has been truncated to the first 50 characters for search."
             }
           },
           "scopes": [
@@ -145,7 +158,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address, you can fill in me under user identity. Note that this interface cannot be accessed using a public email address"
+              "description": "User email address, you can fill in me under user identity. Note that this interface cannot be accessed using a public email address",
+              "example": "user@example.com"
             }
           },
           "parameterOrder": [
@@ -160,12 +174,14 @@
                 "email_address": {
                   "type": "string",
                   "description": "email address",
-                  "required": false
+                  "required": false,
+                  "example": "abc@abc.com"
                 },
                 "email_type": {
                   "type": "string",
                   "description": "Email address type",
                   "required": false,
+                  "example": "USER_PRIMARY",
                   "options": [
                     {
                       "value": "MAIL_GROUP",
@@ -220,7 +236,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Only support filling in me"
+              "description": "Only support filling in me",
+              "example": "me"
             }
           },
           "parameterOrder": [
@@ -230,12 +247,14 @@
             "primary_email_address": {
               "type": "string",
               "description": "user primary email address",
-              "required": false
+              "required": false,
+              "example": "abc@abc.com"
             },
             "not_found_reason": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "邮箱地址不存在时的未命中原因；当 primary_email_address 为空时可用于判断未命中",
+              "required": false,
+              "example": "mailbox address not found"
             }
           },
           "scopes": [
@@ -257,7 +276,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@example.com"
             },
             "page_size": {
               "type": "integer",
@@ -269,7 +289,7 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "翻页 token：首页无需传参，后续请求使用上一次返回的 page_token 实现翻页"
             }
           },
           "parameterOrder": [
@@ -279,11 +299,12 @@
             "query": {
               "type": "string",
               "description": "Search for keywords.; Data validation rules: ;- Length range: 0 to 50 characters",
-              "required": false
+              "required": false,
+              "example": "合同审批通知"
             },
             "filter": {
               "type": "object",
-              "description": "It is used for fine filtering of search results, and supports multi-dimensional combination filtering by sender, recipient, folder, time range, etc., narrowing the query range and improving search accuracy.; Example values: {\"from\": [\"<redacted>\"], \"is_unread\": true}",
+              "description": "It is used for fine filtering of search results, and supports multi-dimensional combination filtering by sender, recipient, folder, time range, etc., narrowing the query range and improving search accuracy.; Example values: {\"from\": [\"<sender-email>\"], \"is_unread\": true}",
               "required": false,
               "ref": "mail_search_filter",
               "properties": {
@@ -299,18 +320,19 @@
                 },
                 "cc": {
                   "type": "array",
-                  "description": "The CC name or email address filter returns only the CC list containing the CC's messages",
+                  "description": "Filter by CC recipient name or email address; returns only emails whose CC list contains that recipient",
                   "required": false
                 },
                 "bcc": {
                   "type": "array",
-                  "description": "The secret sender name or email address filter returns only the secret sender list containing the secret sender's emails",
+                  "description": "Filter by BCC recipient name or email address; returns only emails whose BCC list contains that recipient",
                   "required": false
                 },
                 "subject": {
                   "type": "string",
                   "description": "Mail subject search returns only the results that can find the search term in the subject",
-                  "required": false
+                  "required": false,
+                  "example": "合同签署"
                 },
                 "folder": {
                   "type": "array",
@@ -325,12 +347,14 @@
                 "has_attachment": {
                   "type": "boolean",
                   "description": "Whether to filter only emails with attachments, default value: No",
-                  "required": false
+                  "required": false,
+                  "example": true
                 },
                 "is_unread": {
                   "type": "boolean",
                   "description": "Whether to filter only unread messages, the default is No",
-                  "required": false
+                  "required": false,
+                  "example": true
                 },
                 "create_time": {
                   "type": "object",
@@ -341,12 +365,14 @@
                     "start_time": {
                       "type": "string",
                       "description": "The start time of the time range. (iso8601) Accurate to the second",
-                      "required": false
+                      "required": false,
+                      "example": "2026-03-10T00:00:00+08:00"
                     },
                     "end_time": {
                       "type": "string",
                       "description": "The cutoff time for the time range. (iso8601) Accurate to the second",
-                      "required": false
+                      "required": false,
+                      "example": "2026-03-10T00:00:00+08:00"
                     }
                   }
                 }
@@ -362,12 +388,14 @@
                 "id": {
                   "type": "string",
                   "description": "message unique identifier",
-                  "required": true
+                  "required": true,
+                  "example": "msg_XXX"
                 },
                 "display_info": {
                   "type": "string",
-                  "description": "Cards containing basic information about the email, snippets of text that users search for keywords, and packages labeled with < h > </h > tags",
-                  "required": false
+                  "description": "Card containing the email's basic information; the text snippets that match the user's search keywords are wrapped in <h></h> tags",
+                  "required": false,
+                  "example": "{}"
                 },
                 "meta_data": {
                   "type": "object",
@@ -378,26 +406,30 @@
                     "title": {
                       "type": "string",
                       "description": "email subject",
-                      "required": false
+                      "required": false,
+                      "example": "测试邮件"
                     },
                     "thread_id": {
                       "type": "string",
                       "description": "mail thread ID",
-                      "required": false
+                      "required": false,
+                      "example": "thread_id_XXX"
                     },
                     "create_time": {
                       "type": "string",
                       "description": "email reception time",
-                      "required": false
+                      "required": false,
+                      "example": "2026-03-15T14:30:00+08:00"
                     },
                     "message_biz_id": {
                       "type": "string",
                       "description": "message unique identifier",
-                      "required": false
+                      "required": false,
+                      "example": "msg_id_xxx"
                     },
                     "from": {
                       "type": "object",
-                      "description": "",
+                      "description": "邮件发件人",
                       "required": false,
                       "ref": "mail_address"
                     }
@@ -408,22 +440,24 @@
             "total": {
               "type": "integer",
               "description": "number of search hits",
-              "required": false
+              "required": false,
+              "example": 99
             },
             "has_more": {
               "type": "boolean",
-              "description": "",
+              "description": "可继续翻页",
               "required": false
             },
             "page_token": {
               "type": "string",
-              "description": "",
+              "description": "翻页用的token。当has_more=true时，可用这个token作为入参继续翻页搜索",
               "required": false
             },
             "notice": {
               "type": "string",
               "description": "Search for supplementary prompt information, returning additional instructions for this search, such as: query was truncated; search results are incomplete, etc",
-              "required": false
+              "required": false,
+              "example": "The query is too long and has been truncated to the first 50 characters for search."
             }
           },
           "scopes": [
@@ -449,13 +483,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "aba@aac.com"
             },
             "message_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "A scheduled email ID has been set"
+              "description": "ID of the mail whose scheduled send has been set",
+              "example": "268dce11-85f7-427d-8756-6be3abc850fd"
             }
           },
           "parameterOrder": [
@@ -493,7 +529,8 @@
             "raw": {
               "type": "string",
               "description": "Base64url-encoded full RFC 5822 (EML) message content, including all headers (Subject, From, To, Cc, Bcc, etc.) and message body (MIME structure with internal connection pictures and attachments). The original EML size cannot exceed 37.5MB",
-              "required": false
+              "required": false,
+              "example": "Q29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PSJ1cy1hc2NpaSIKTUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdAp0bzogInRvIiA8dG9AeHh4Lnh4Pgpmcm9tOiAiZnJvbSIgPGZyb21AeHh4Lnh4PgpzdWJqZWN0OiB0aGlzIGlzIGEgc3ViamVjdAoKdGhpcyBpcyB0aGUgbWVzc2FnZSBib2R5Lg"
             }
           },
           "responseBody": {
@@ -506,7 +543,8 @@
                 "id": {
                   "type": "string",
                   "description": "Draft ID",
-                  "required": false
+                  "required": false,
+                  "example": "268dce11-85f7-427d-8756-6be3abc850fd"
                 },
                 "message": {
                   "type": "object",
@@ -518,6 +556,7 @@
                       "type": "string",
                       "description": "MIME mail data, based on base64url encoding",
                       "required": false,
+                      "example": "Q29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PSJ1cy1hc2NpaSIKTUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdAp0bzogInRvIiA8dG9AeHh4Lnh4Pgpmcm9tOiAiZnJvbSIgPGZyb21AeHh4Lnh4PgpzdWJqZWN0OiB0aGlzIGlzIGEgc3ViamVjdAoKdGhpcyBpcyB0aGUgbWVzc2FnZSBib2R5Lg",
                       "annotations": [
                         "writeOnly"
                       ]
@@ -525,7 +564,8 @@
                     "subject": {
                       "type": "string",
                       "description": "theme",
-                      "required": false
+                      "required": false,
+                      "example": "邮件标题"
                     },
                     "to": {
                       "type": "array",
@@ -539,7 +579,7 @@
                     },
                     "bcc": {
                       "type": "array",
-                      "description": "",
+                      "description": "密送",
                       "required": false
                     },
                     "head_from": {
@@ -551,7 +591,8 @@
                     "body_html": {
                       "type": "string",
                       "description": "Body (base64url)",
-                      "required": false
+                      "required": false,
+                      "example": "xxxx"
                     },
                     "internal_date": {
                       "type": "string",
@@ -563,17 +604,19 @@
                       "type": "integer",
                       "description": "Email Status, 1 (Received) 2 (Sent) 3 (Draft)",
                       "required": false,
-                      "example": "1"
+                      "example": 1
                     },
                     "smtp_message_id": {
                       "type": "string",
                       "description": "RFC protocol id",
-                      "required": false
+                      "required": false,
+                      "example": "message-id@example.com"
                     },
                     "message_id": {
                       "type": "string",
                       "description": "email id",
-                      "required": false
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "attachments": {
                       "type": "array",
@@ -583,17 +626,20 @@
                     "body_plain_text": {
                       "type": "string",
                       "description": "Body plain text (base64url)",
-                      "required": false
+                      "required": false,
+                      "example": "SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC4"
                     },
                     "thread_id": {
                       "type": "string",
                       "description": "session id",
-                      "required": false
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "body_preview": {
                       "type": "string",
                       "description": "The first 100 characters of the plain text content of the email body, based on base64url encoding, are used to quickly preview the core content of the email without decoding the full body",
-                      "required": false
+                      "required": false,
+                      "example": "xxxxx"
                     },
                     "label_ids": {
                       "type": "array",
@@ -658,12 +704,14 @@
                     "references": {
                       "type": "string",
                       "description": "References to headers",
-                      "required": false
+                      "required": false,
+                      "example": "<5678.abcd@test.com>\\r\\n\\t<1234.abcd@message-id>"
                     },
                     "body_calendar": {
                       "type": "string",
-                      "description": "",
+                      "description": "日历邀请内容(base64url)。当邮件包含标准RFC 5545格式的日历邀请时返回，解码后为ICS文本",
                       "required": false,
+                      "example": "QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KLi4uDQpFTkQ6VkNBTEVOREFS",
                       "annotations": [
                         "lark:data:message.body"
                       ]
@@ -674,8 +722,9 @@
             },
             "reference": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "草稿预览链接",
+              "required": false,
+              "example": "https://{domain}/mail?draftId=MWFhMjA5NzctYTE5OC00ZDcxLTkxYTctNjY1MDVjNDc4MmJm&scene=send-preview&mailbox=user%40company.com"
             }
           },
           "scopes": [
@@ -698,14 +747,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "The user's email address does not exist. Please check whether the user's email address entered is correct, or confirm that the user's email address is in normal condition",
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
               "example": "aba@aac.com or me"
             },
             "draft_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Draft ID, which can be obtained through the list draft list interface"
+              "description": "Draft ID, which can be obtained through the list draft list interface",
+              "example": "268dce11-85f7-427d-8756-6be3abc850fd"
             }
           },
           "parameterOrder": [
@@ -732,19 +782,22 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User mailbox email address, used as the user mailbox identity. You can obtain the primary mailbox address from the Get user mailbox profile API. When calling this API with a user_access_token, you can use the placeholder me to indicate the primary mailbox of the currently authorized user"
+              "description": "User mailbox email address, used as the user mailbox identity. You can obtain the primary mailbox address from the Get user mailbox profile API. When calling this API with a user_access_token, you can use the placeholder me to indicate the primary mailbox of the currently authorized user",
+              "example": "aba@aac.com"
             },
             "draft_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Draft ID. You can obtain it from the List drafts API"
+              "description": "Draft ID. You can obtain it from the List drafts API",
+              "example": "268dce11-85f7-427d-8756-6be3abc850fd"
             },
             "format": {
               "type": "string",
               "location": "query",
               "required": false,
               "description": "The draft content style to be obtained, the value is: metadata/full (default)/raw",
+              "example": "full",
               "options": [
                 {
                   "value": "metadata",
@@ -780,7 +833,8 @@
                 "id": {
                   "type": "string",
                   "description": "Draft ID",
-                  "required": false
+                  "required": false,
+                  "example": "268dce11-85f7-427d-8756-6be3abc850fd"
                 },
                 "message": {
                   "type": "object",
@@ -791,7 +845,8 @@
                     "subject": {
                       "type": "string",
                       "description": "Subject",
-                      "required": false
+                      "required": false,
+                      "example": "邮件标题"
                     },
                     "to": {
                       "type": "array",
@@ -817,7 +872,8 @@
                     "body_html": {
                       "type": "string",
                       "description": "Body (base64url)",
-                      "required": false
+                      "required": false,
+                      "example": "PHA-SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC48L3A-"
                     },
                     "internal_date": {
                       "type": "string",
@@ -829,17 +885,19 @@
                       "type": "integer",
                       "description": "Email Status, 1 (Received) 2 (Sent) 3 (Draft)",
                       "required": false,
-                      "example": "1"
+                      "example": 1
                     },
                     "smtp_message_id": {
                       "type": "string",
                       "description": "RFC protocol id",
-                      "required": false
+                      "required": false,
+                      "example": "message-id@example.com"
                     },
                     "message_id": {
                       "type": "string",
                       "description": "email id",
-                      "required": false
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "attachments": {
                       "type": "array",
@@ -849,17 +907,20 @@
                     "body_plain_text": {
                       "type": "string",
                       "description": "Body plain text (base64url)",
-                      "required": false
+                      "required": false,
+                      "example": "SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC4"
                     },
                     "thread_id": {
                       "type": "string",
                       "description": "Thread id",
-                      "required": false
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "body_preview": {
                       "type": "string",
                       "description": "The first 100 characters of the plain text content of the email body, based on base64url encoding, are used to quickly preview the core content of the email without decoding the full body",
-                      "required": false
+                      "required": false,
+                      "example": "Hello, this is a draft email."
                     },
                     "label_ids": {
                       "type": "array",
@@ -924,12 +985,14 @@
                     "references": {
                       "type": "string",
                       "description": "References to headers",
-                      "required": false
+                      "required": false,
+                      "example": "<5678.abcd@test.com>\\r\\n\\t<1234.abcd@message-id>"
                     },
                     "body_calendar": {
                       "type": "string",
-                      "description": "",
+                      "description": "日历邀请内容(base64url)。当邮件包含标准RFC 5545格式的日历邀请时返回，解码后为ICS文本",
                       "required": false,
+                      "example": "QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KLi4uDQpFTkQ6VkNBTEVOREFS",
                       "annotations": [
                         "lark:data:message.body"
                       ]
@@ -958,14 +1021,16 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@example.com"
             },
             "page_size": {
               "type": "integer",
               "location": "query",
               "required": false,
               "description": "paging size",
-              "default": "20",
+              "default": 20,
+              "example": 20,
               "max": "100",
               "min": "1"
             },
@@ -973,7 +1038,8 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "xxx"
             }
           },
           "parameterOrder": [
@@ -988,19 +1054,22 @@
                 "id": {
                   "type": "string",
                   "description": "Draft ID",
-                  "required": false
+                  "required": false,
+                  "example": "268dce11-85f7-427d-8756-6be3abc850fd"
                 }
               }
             },
             "page_token": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "分页标记，当 has_more 为 true 时，会同时返回新的 page_token，否则不返回 page_token",
+              "required": false,
+              "example": "xxx"
             },
             "has_more": {
               "type": "boolean",
-              "description": "",
-              "required": false
+              "description": "是否还有更多项",
+              "required": false,
+              "example": true
             }
           },
           "scopes": [
@@ -1029,7 +1098,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Draft ID, which can be obtained through the Create Draft, Update Draft, or List Draft List interfaces"
+              "description": "Draft ID, which can be obtained through the Create Draft, Update Draft, or List Draft List interfaces",
+              "example": "268dce11-85f7-427d-8756-6be3abc850fd"
             }
           },
           "parameterOrder": [
@@ -1039,8 +1109,9 @@
           "requestBody": {
             "send_time": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "定时发送的 Unix 时间戳（秒）。不传或为空时立即发送。需至少为当前时间 + 5 分钟",
+              "required": false,
+              "example": "1720000000"
             }
           },
           "responseBody": {
@@ -1058,16 +1129,17 @@
             },
             "recall_status": {
               "type": "string",
-              "description": "Withdrawn status. Returns unavailable only if withdrawal is not supported",
+              "description": "Returned only when the message can be recalled; the value is then available",
               "required": false,
+              "example": "unavailable",
               "options": [
                 {
                   "value": "unavailable",
-                  "description": ""
+                  "description": "邮件不可撤回"
                 },
                 {
                   "value": "available",
-                  "description": ""
+                  "description": "邮件可撤回"
                 }
               ],
               "enum": [
@@ -1078,19 +1150,21 @@
             },
             "automation_send_disable": {
               "type": "object",
-              "description": "",
+              "description": "当用户禁用自动化发信时返回此字段；为空表示发信成功",
               "required": false,
               "ref": "automation_send_disable",
               "properties": {
                 "reason": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "自动化发信被禁用的原因说明",
+                  "required": false,
+                  "example": "Automation send is disabled by your mailbox setting"
                 },
                 "reference": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "用户可参考reference内容解决",
+                  "required": false,
+                  "example": "https://open.larksuite.com/mail/settings/automation"
                 }
               }
             }
@@ -1122,7 +1196,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Draft ID, which can be obtained by creating a draft or listing a draft interface"
+              "description": "Draft ID, which can be obtained by creating a draft or listing a draft interface",
+              "example": "268dce11-85f7-427d-8756-6be3abc850fd"
             }
           },
           "parameterOrder": [
@@ -1133,7 +1208,8 @@
             "raw": {
               "type": "string",
               "description": "Base64url-encoded full RFC 5822 (EML) email content, which replaces the original draft content as a whole. The original EML size cannot exceed 37.5MB",
-              "required": true
+              "required": true,
+              "example": "Q29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PSJ1cy1hc2NpaSIKTUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdAp0bzogInRvIiA8dG9AeHh4Lnh4Pgpmcm9tOiAiZnJvbSIgPGZyb21AeHh4Lnh4PgpzdWJqZWN0OiB0aGlzIGlzIGEgc3ViamVjdAoKdGhpcyBpcyB0aGUgbWVzc2FnZSBib2R5Lg"
             }
           },
           "responseBody": {
@@ -1146,7 +1222,8 @@
                 "id": {
                   "type": "string",
                   "description": "Draft ID",
-                  "required": false
+                  "required": false,
+                  "example": "268dce11-85f7-427d-8756-6be3abc850fd"
                 },
                 "message": {
                   "type": "object",
@@ -1158,6 +1235,7 @@
                       "type": "string",
                       "description": "MIME mail data, based on base64url encoding",
                       "required": false,
+                      "example": "Q29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PSJ1cy1hc2NpaSIKTUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdAp0bzogInRvIiA8dG9AeHh4Lnh4Pgpmcm9tOiAiZnJvbSIgPGZyb21AeHh4Lnh4PgpzdWJqZWN0OiB0aGlzIGlzIGEgc3ViamVjdAoKdGhpcyBpcyB0aGUgbWVzc2FnZSBib2R5Lg",
                       "annotations": [
                         "writeOnly"
                       ]
@@ -1180,7 +1258,7 @@
                     },
                     "bcc": {
                       "type": "array",
-                      "description": "",
+                      "description": "密送",
                       "required": false
                     },
                     "head_from": {
@@ -1192,7 +1270,8 @@
                     "body_html": {
                       "type": "string",
                       "description": "Body (base64url)",
-                      "required": false
+                      "required": false,
+                      "example": "PHA-SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC48L3A-"
                     },
                     "internal_date": {
                       "type": "string",
@@ -1204,17 +1283,19 @@
                       "type": "integer",
                       "description": "Email Status, 1 (Received) 2 (Sent) 3 (Draft)",
                       "required": false,
-                      "example": "1"
+                      "example": 1
                     },
                     "smtp_message_id": {
                       "type": "string",
                       "description": "RFC protocol id",
-                      "required": false
+                      "required": false,
+                      "example": "message-id@example.com"
                     },
                     "message_id": {
                       "type": "string",
                       "description": "email id",
-                      "required": false
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "attachments": {
                       "type": "array",
@@ -1224,17 +1305,20 @@
                     "body_plain_text": {
                       "type": "string",
                       "description": "Body plain text (base64url)",
-                      "required": false
+                      "required": false,
+                      "example": "SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC4"
                     },
                     "thread_id": {
                       "type": "string",
                       "description": "session id",
-                      "required": false
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "body_preview": {
                       "type": "string",
                       "description": "The first 100 characters of the plain text content of the email body, based on base64url encoding, are used to quickly preview the core content of the email without decoding the full body",
-                      "required": false
+                      "required": false,
+                      "example": "Hello, this is a draft email."
                     },
                     "label_ids": {
                       "type": "array",
@@ -1299,12 +1383,14 @@
                     "references": {
                       "type": "string",
                       "description": "References to headers",
-                      "required": false
+                      "required": false,
+                      "example": "<5678.abcd@test.com>\\r\\n\\t<1234.abcd@message-id>"
                     },
                     "body_calendar": {
                       "type": "string",
-                      "description": "",
+                      "description": "日历邀请内容(base64url)。当邮件包含标准RFC 5545格式的日历邀请时返回，解码后为ICS文本",
                       "required": false,
+                      "example": "QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KLi4uDQpFTkQ6VkNBTEVOREFS",
                       "annotations": [
                         "lark:data:message.body"
                       ]
@@ -1315,8 +1401,9 @@
             },
             "reference": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "草稿预览链接",
+              "required": false,
+              "example": "https://{domain}/mail?draftId=MWFhMjA5NzctYTE5OC00ZDcxLTkxYTctNjY1MDVjNDc4MmJm&scene=send-preview&mailbox=user%40company.com"
             }
           },
           "scopes": [
@@ -1355,14 +1442,15 @@
               "type": "integer",
               "description": "Event type",
               "required": true,
+              "example": 1,
               "options": [
                 {
-                  "value": "1",
+                  "value": 1,
                   "description": "Mail message related events"
                 }
               ],
               "enum": [
-                "1"
+                1
               ],
               "enumName": "EventType",
               "max": "1",
@@ -1433,14 +1521,15 @@
               "type": "integer",
               "description": "Event type",
               "required": true,
+              "example": 1,
               "options": [
                 {
-                  "value": "1",
+                  "value": 1,
                   "description": "Mail message related events"
                 }
               ],
               "enum": [
-                "1"
+                1
               ],
               "enumName": "EventType",
               "max": "1",
@@ -1480,14 +1569,15 @@
           "requestBody": {
             "name": {
               "type": "string",
-              "description": "",
+              "description": "文件夹名称",
               "required": true,
               "example": "newsletter"
             },
             "parent_folder_id": {
               "type": "string",
-              "description": "",
-              "required": true
+              "description": "父文件夹 id，该值为 0 表示根文件夹，id 获取方式见 列出邮箱文件夹",
+              "required": true,
+              "example": "725627422334644"
             }
           },
           "responseBody": {
@@ -1499,40 +1589,43 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
+                  "description": "folder id",
                   "required": false,
+                  "example": "7620095646711680541",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "name": {
                   "type": "string",
-                  "description": "",
+                  "description": "文件夹名称",
                   "required": true,
                   "example": "newsletter"
                 },
                 "parent_folder_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "父文件夹 id，该值为 0 表示根文件夹，id 获取方式见 列出邮箱文件夹",
+                  "required": true,
+                  "example": "725627422334644"
                 },
                 "folder_type": {
                   "type": "integer",
                   "description": "Folder type",
                   "required": false,
+                  "example": 1,
                   "options": [
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "System Folder"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "用户文件夹"
                     }
                   ],
                   "enum": [
-                    "1",
-                    "2"
+                    1,
+                    2
                   ],
                   "enumName": "FolderType",
                   "annotations": [
@@ -1545,6 +1638,7 @@
                   "type": "integer",
                   "description": "number of unread messages",
                   "required": false,
+                  "example": 3,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1553,6 +1647,7 @@
                   "type": "integer",
                   "description": "number of unread sessions",
                   "required": false,
+                  "example": 4,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1588,7 +1683,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Folder ID. The method for obtaining ID is shown in [List Email Folders](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/list)",
+              "description": "Folder ID. The method for obtaining ID is shown in List Email Folders",
               "example": "7620003644728938013"
             }
           },
@@ -1617,7 +1712,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             },
             "folder_id": {
               "type": "string",
@@ -1637,43 +1733,47 @@
               "description": "Complete information about the mail folder, including folder ID, name, attribution level, type, and unread statistics",
               "required": false,
               "ref": "folder",
+              "example": "{\"id\":\"fld_1234567890abcdef\",\"name\":\"收件箱\",\"parent_folder_id\":\"0\",\"folder_type\":1,\"unread_message_count\":12,\"unread_thread_count\":8}",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
+                  "description": "folder id",
                   "required": false,
+                  "example": "7620095646711680541",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "name": {
                   "type": "string",
-                  "description": "",
+                  "description": "文件夹名称",
                   "required": true,
                   "example": "newsletter"
                 },
                 "parent_folder_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "父文件夹 id，该值为 0 表示根文件夹，id 获取方式见 列出邮箱文件夹",
+                  "required": true,
+                  "example": "725627422334644"
                 },
                 "folder_type": {
                   "type": "integer",
                   "description": "Folder type",
                   "required": false,
+                  "example": 1,
                   "options": [
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "System Folder"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "用户文件夹"
                     }
                   ],
                   "enum": [
-                    "1",
-                    "2"
+                    1,
+                    2
                   ],
                   "enumName": "FolderType",
                   "annotations": [
@@ -1686,6 +1786,7 @@
                   "type": "integer",
                   "description": "number of unread messages",
                   "required": false,
+                  "example": 3,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1694,6 +1795,7 @@
                   "type": "integer",
                   "description": "number of unread sessions",
                   "required": false,
+                  "example": 4,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1729,14 +1831,15 @@
               "type": "integer",
               "location": "query",
               "required": false,
-              "description": "Folder type",
+              "description": "Folder type. Supports 1 (system folder) and 2 (user folder)",
+              "example": 1,
               "options": [
                 {
-                  "value": "1",
+                  "value": 1,
                   "description": "System Folder"
                 },
                 {
-                  "value": "2",
+                  "value": 2,
                   "description": "User folder"
                 }
               ],
@@ -1744,8 +1847,8 @@
               "max": "2",
               "min": "1",
               "enum": [
-                "1",
-                "2"
+                1,
+                2
               ]
             }
           },
@@ -1760,40 +1863,43 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
+                  "description": "folder id",
                   "required": false,
+                  "example": "7620095646711680541",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "name": {
                   "type": "string",
-                  "description": "",
+                  "description": "文件夹名称",
                   "required": true,
                   "example": "newsletter"
                 },
                 "parent_folder_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "父文件夹 id，该值为 0 表示根文件夹，id 获取方式见 列出邮箱文件夹",
+                  "required": true,
+                  "example": "725627422334644"
                 },
                 "folder_type": {
                   "type": "integer",
                   "description": "Folder type",
                   "required": false,
+                  "example": 1,
                   "options": [
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "System Folder"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "用户文件夹"
                     }
                   ],
                   "enum": [
-                    "1",
-                    "2"
+                    1,
+                    2
                   ],
                   "enumName": "FolderType",
                   "annotations": [
@@ -1806,6 +1912,7 @@
                   "type": "integer",
                   "description": "number of unread messages",
                   "required": false,
+                  "example": 3,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1814,6 +1921,7 @@
                   "type": "integer",
                   "description": "number of unread sessions",
                   "required": false,
+                  "example": 4,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1849,7 +1957,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Folder ID. The method for obtaining ID is shown in [List Email Folders](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/list)",
+              "description": "Folder ID. The method for obtaining ID is shown in List Email Folders",
               "example": "7620003644728938013"
             }
           },
@@ -1866,8 +1974,9 @@
             },
             "parent_folder_id": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "父文件夹 id，该值为 0 表示根文件夹，id 获取方式见 列出邮箱文件夹",
+              "required": false,
+              "example": "725627422334644"
             }
           },
           "scopes": [
@@ -1895,7 +2004,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             }
           },
           "parameterOrder": [
@@ -1904,7 +2014,7 @@
           "requestBody": {
             "label": {
               "type": "object",
-              "description": "mail label",
+              "description": "Mail label. The label name is required, the background color is optional",
               "required": true,
               "annotations": [
                 ""
@@ -1913,12 +2023,14 @@
                 "name": {
                   "type": "string",
                   "description": "Label name, must be filled in. Maximum 255 characters",
-                  "required": true
+                  "required": true,
+                  "example": "test"
                 },
                 "background_color": {
                   "type": "string",
                   "description": "Label background color, supports the following color values: blue, indigo, purple, violet, carmine, red, orange, yellow, lime, green, turquoise, wathet",
-                  "required": false
+                  "required": false,
+                  "example": "blue"
                 }
               }
             }
@@ -1932,7 +2044,7 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
+                  "description": "标签ID",
                   "required": false,
                   "example": "7620003644728938013",
                   "annotations": [
@@ -1942,17 +2054,20 @@
                 "name": {
                   "type": "string",
                   "description": "Label name, optional. Maximum 255 characters",
-                  "required": false
+                  "required": false,
+                  "example": "test"
                 },
                 "background_color": {
                   "type": "string",
                   "description": "Label background color, optional. The following color values are supported: blue, indigo, purple, violet, carmine, red, orange, yellow, lime, green, turquoise, wathet",
-                  "required": false
+                  "required": false,
+                  "example": "blue"
                 },
                 "messages_unread": {
                   "type": "integer",
                   "description": "The number of unread messages with this label",
                   "required": false,
+                  "example": 0,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1981,7 +2096,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "The user's email address does not exist. Please check whether the user's email address entered is correct, or confirm that the user's email address is in normal condition"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             },
             "label_id": {
               "type": "string",
@@ -2016,7 +2132,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             },
             "label_id": {
               "type": "string",
@@ -2039,7 +2156,7 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
+                  "description": "标签ID",
                   "required": false,
                   "example": "7620003644728938013",
                   "annotations": [
@@ -2049,17 +2166,20 @@
                 "name": {
                   "type": "string",
                   "description": "Label name, optional. Maximum 255 characters",
-                  "required": false
+                  "required": false,
+                  "example": "test"
                 },
                 "background_color": {
                   "type": "string",
                   "description": "Label background color, optional. The following color values are supported: blue, indigo, purple, violet, carmine, red, orange, yellow, lime, green, turquoise, wathet",
-                  "required": false
+                  "required": false,
+                  "example": "blue"
                 },
                 "messages_unread": {
                   "type": "integer",
                   "description": "The number of unread messages with this label",
                   "required": false,
+                  "example": 0,
                   "annotations": [
                     "readOnly"
                   ]
@@ -2088,7 +2208,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             }
           },
           "parameterOrder": [
@@ -2102,7 +2223,7 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
+                  "description": "标签ID",
                   "required": false,
                   "example": "7620003644728938013",
                   "annotations": [
@@ -2112,17 +2233,20 @@
                 "name": {
                   "type": "string",
                   "description": "Label name, optional. Maximum 255 characters",
-                  "required": false
+                  "required": false,
+                  "example": "test"
                 },
                 "background_color": {
                   "type": "string",
                   "description": "Label background color, optional. The following color values are supported: blue, indigo, purple, violet, carmine, red, orange, yellow, lime, green, turquoise, wathet",
-                  "required": false
+                  "required": false,
+                  "example": "blue"
                 },
                 "messages_unread": {
                   "type": "integer",
                   "description": "The number of unread messages with this label",
                   "required": false,
+                  "example": 0,
                   "annotations": [
                     "readOnly"
                   ]
@@ -2151,7 +2275,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             },
             "label_id": {
               "type": "string",
@@ -2168,19 +2293,21 @@
           "requestBody": {
             "label": {
               "type": "object",
-              "description": "",
+              "description": "邮件标签，必须填写名字或颜色中的至少一个字段",
               "required": true,
               "ref": "label",
               "properties": {
                 "name": {
                   "type": "string",
                   "description": "Label name, optional. Maximum 255 characters",
-                  "required": false
+                  "required": false,
+                  "example": "test"
                 },
                 "background_color": {
                   "type": "string",
                   "description": "Label background color, optional. The following color values are supported: blue, indigo, purple, violet, carmine, red, orange, yellow, lime, green, turquoise, wathet",
-                  "required": false
+                  "required": false,
+                  "example": "blue"
                 }
               }
             }
@@ -2194,7 +2321,7 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
+                  "description": "标签ID",
                   "required": false,
                   "example": "7620003644728938013",
                   "annotations": [
@@ -2204,17 +2331,20 @@
                 "name": {
                   "type": "string",
                   "description": "Label name, optional. Maximum 255 characters",
-                  "required": false
+                  "required": false,
+                  "example": "test"
                 },
                 "background_color": {
                   "type": "string",
                   "description": "Label background color, optional. The following color values are supported: blue, indigo, purple, violet, carmine, red, orange, yellow, lime, green, turquoise, wathet",
-                  "required": false
+                  "required": false,
+                  "example": "blue"
                 },
                 "messages_unread": {
                   "type": "integer",
                   "description": "The number of unread messages with this label",
                   "required": false,
+                  "example": 0,
                   "annotations": [
                     "readOnly"
                   ]
@@ -2247,7 +2377,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "",
+              "description": "用户邮箱地址，作为用户邮箱身份标识，最大长度 255 字符。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱",
               "example": "user@xxx.xx or me"
             }
           },
@@ -2270,7 +2400,8 @@
             "phone": {
               "type": "string",
               "description": "Email Contact's Phone Number",
-              "required": false
+              "required": false,
+              "example": "19912341234"
             },
             "mail_address": {
               "type": "string",
@@ -2293,7 +2424,8 @@
             "position": {
               "type": "string",
               "description": "Email Contact's Position",
-              "required": false
+              "required": false,
+              "example": "CFO"
             }
           },
           "responseBody": {
@@ -2307,6 +2439,7 @@
                   "type": "string",
                   "description": "Email Contact's ID",
                   "required": false,
+                  "example": "7256274576546463764",
                   "annotations": [
                     "readOnly"
                   ]
@@ -2327,6 +2460,7 @@
                   "type": "string",
                   "description": "Email Contact's Phone Number",
                   "required": false,
+                  "example": "19912341234",
                   "annotations": [
                     "lark:data:mail_contact.phone"
                   ]
@@ -2364,7 +2498,8 @@
                 "position": {
                   "type": "string",
                   "description": "Email Contact's Position",
-                  "required": false
+                  "required": false,
+                  "example": "CFO"
                 }
               }
             }
@@ -2397,7 +2532,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Email Contact's ID. For the acquisition method, see [List Email Contacts](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-mail_contact/list)"
+              "description": "Email Contact's ID. For the acquisition method, see List Email Contacts",
+              "example": "123"
             }
           },
           "parameterOrder": [
@@ -2433,6 +2569,7 @@
               "location": "query",
               "required": true,
               "description": "paging size",
+              "example": 20,
               "max": "20",
               "min": "1"
             },
@@ -2440,7 +2577,8 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "xxx"
             }
           },
           "parameterOrder": [
@@ -2456,6 +2594,7 @@
                   "type": "string",
                   "description": "Email Contact's ID",
                   "required": false,
+                  "example": "7256274576546463764",
                   "annotations": [
                     "readOnly"
                   ]
@@ -2476,6 +2615,7 @@
                   "type": "string",
                   "description": "Email Contact's Phone Number",
                   "required": false,
+                  "example": "19912341234",
                   "annotations": [
                     "lark:data:mail_contact.phone"
                   ]
@@ -2513,19 +2653,28 @@
                 "position": {
                   "type": "string",
                   "description": "Email Contact's Position",
-                  "required": false
+                  "required": false,
+                  "example": "CFO"
                 }
               }
             },
             "page_token": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "分页标记，当 has_more 为 true 时，会同时返回新的 page_token，否则不返回 page_token",
+              "required": false,
+              "example": "xxx"
             },
             "has_more": {
               "type": "boolean",
-              "description": "Whether the response body has more parameters",
-              "required": false
+              "description": "Whether there are more items",
+              "required": false,
+              "example": true
+            },
+            "hint": {
+              "type": "string",
+              "description": "提示信息",
+              "required": false,
+              "example": "xxx"
             }
           },
           "scopes": [
@@ -2556,7 +2705,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Email Contact's ID. For the acquisition method, see [List Email Contacts](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-mail_contact/list)"
+              "description": "Email Contact's ID. For the acquisition method, see List Email Contacts",
+              "example": "123"
             }
           },
           "parameterOrder": [
@@ -2579,7 +2729,8 @@
             "phone": {
               "type": "string",
               "description": "Email Contact's Phone Number",
-              "required": false
+              "required": false,
+              "example": "19912341234"
             },
             "mail_address": {
               "type": "string",
@@ -2602,7 +2753,8 @@
             "position": {
               "type": "string",
               "description": "Email Contact's Position",
-              "required": false
+              "required": false,
+              "example": "CFO"
             }
           },
           "scopes": [
@@ -2637,7 +2789,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Message ID, the method for obtaining ID is shown in [List Emails](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list)"
+              "description": "Message ID, the method for obtaining ID is shown in List Emails",
+              "example": "TUlHc1NoWFhJMXgyUi9VZTNVL3h6UnlkRUdzPQ=="
             },
             "attachment_ids": {
               "type": "list",
@@ -2659,12 +2812,14 @@
                 "attachment_id": {
                   "type": "string",
                   "description": "Attachment ID",
-                  "required": false
+                  "required": false,
+                  "example": "[\"YQqYbQHoQoDqXjxWKhJbo8Gicjf\"]"
                 },
                 "download_url": {
                   "type": "string",
                   "description": "Download link",
-                  "required": false
+                  "required": false,
+                  "example": "https://sample.feishu.cn/mail/attachment/example"
                 }
               }
             },
@@ -2675,18 +2830,20 @@
             },
             "failed_reasons": {
               "type": "array",
-              "description": "",
+              "description": "附件下载链接获取失败原因",
               "required": false,
               "properties": {
                 "attachment_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "附件 ID",
+                  "required": false,
+                  "example": "YQqYbQHoQoDqXjxWKhJbo8Gicjf"
                 },
                 "reason": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "失败原因",
+                  "required": false,
+                  "example": "attachment_not_found"
                 }
               }
             }
@@ -2725,21 +2882,21 @@
           "requestBody": {
             "format": {
               "type": "string",
-              "description": "",
+              "description": "需要获取的邮件内容",
               "required": false,
-              "example": "Full",
+              "example": "full",
               "options": [
                 {
                   "value": "full",
-                  "description": ""
+                  "description": "全文，包括标签、文件夹、主题、收发件人、纯文本、HTML等信息"
                 },
                 {
                   "value": "plain_text_full",
-                  "description": ""
+                  "description": "全文，只返回纯文本正文内容，不返回HTML。返回内容包括标签、文件夹、主题、收发件人、纯文本等信息"
                 },
                 {
                   "value": "metadata",
-                  "description": ""
+                  "description": "邮件元数据信息，包括标签、文件夹、主题、收发件人、摘要等信息，不返回正文内容"
                 }
               ],
               "enum": [
@@ -2765,14 +2922,16 @@
                   "type": "string",
                   "description": "MIME mail data, based on base64url encoding",
                   "required": false,
+                  "example": "Q29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PSJ1cy1hc2NpaSIKTUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdAp0bzogInRvIiA8dG9AeHh4Lnh4Pgpmcm9tOiAiZnJvbSIgPGZyb21AeHh4Lnh4PgpzdWJqZWN0OiB0aGlzIGlzIGEgc3ViamVjdAoKdGhpcyBpcyB0aGUgbWVzc2FnZSBib2R5Lg",
                   "annotations": [
                     "writeOnly"
                   ]
                 },
                 "subject": {
                   "type": "string",
-                  "description": "",
+                  "description": "主题",
                   "required": false,
+                  "example": "邮件标题",
                   "annotations": [
                     "lark:data:message.subject"
                   ]
@@ -2787,12 +2946,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -2808,12 +2968,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -2821,7 +2982,7 @@
                 },
                 "bcc": {
                   "type": "array",
-                  "description": "",
+                  "description": "密送",
                   "required": false,
                   "annotations": [
                     "lark:data:message.address"
@@ -2829,12 +2990,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -2842,7 +3004,7 @@
                 },
                 "head_from": {
                   "type": "object",
-                  "description": "",
+                  "description": "发件人",
                   "required": false,
                   "ref": "mail_address",
                   "annotations": [
@@ -2851,12 +3013,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -2866,6 +3029,7 @@
                   "type": "string",
                   "description": "Body (base64url)",
                   "required": false,
+                  "example": "PHA-SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC48L3A-",
                   "annotations": [
                     "lark:data:message.body"
                   ]
@@ -2878,19 +3042,21 @@
                 },
                 "message_state": {
                   "type": "integer",
-                  "description": "",
+                  "description": "邮件状态，1为收信，2为发信，3为草稿",
                   "required": false,
-                  "example": "1"
+                  "example": 1
                 },
                 "smtp_message_id": {
                   "type": "string",
                   "description": "RFC protocol id",
-                  "required": false
+                  "required": false,
+                  "example": "message-id@example.com"
                 },
                 "message_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "邮件id",
+                  "required": false,
+                  "example": "tfuh9N4WnzU6jdDw="
                 },
                 "attachments": {
                   "type": "array",
@@ -2904,6 +3070,7 @@
                       "type": "string",
                       "description": "The body of the attachment, encoded in base64url (maximum supported file size 37MB)",
                       "required": true,
+                      "example": "aGVsbG8gd29ybGQK",
                       "annotations": [
                         "writeOnly"
                       ]
@@ -2911,12 +3078,14 @@
                     "filename": {
                       "type": "string",
                       "description": "attachment file name",
-                      "required": true
+                      "required": true,
+                      "example": "helloworld.txt"
                     },
                     "id": {
                       "type": "string",
                       "description": "Attachment ID",
                       "required": false,
+                      "example": "YQqYbQHoQoDqXjxWKhJbo8Gicjf",
                       "annotations": [
                         "readOnly"
                       ]
@@ -2925,20 +3094,20 @@
                       "type": "integer",
                       "description": "Attachment type",
                       "required": false,
-                      "example": "1",
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
-                          "description": ""
+                          "value": 1,
+                          "description": "普通附件"
                         },
                         {
-                          "value": "2",
-                          "description": ""
+                          "value": 2,
+                          "description": "超大附件"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "AttachmentType",
                       "annotations": [
@@ -2949,37 +3118,42 @@
                     },
                     "is_inline": {
                       "type": "boolean",
-                      "description": "",
-                      "required": false
+                      "description": "是否为内联图片，true 表示是内联图片",
+                      "required": false,
+                      "example": false
                     },
                     "cid": {
                       "type": "string",
                       "description": "Content ID, HTML refers to the image via cid: protocol",
-                      "required": false
+                      "required": false,
+                      "example": "image1@example.com"
                     }
                   }
                 },
                 "body_plain_text": {
                   "type": "string",
-                  "description": "",
+                  "description": "正文纯文本(base64url)",
                   "required": false,
+                  "example": "SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC4",
                   "annotations": [
                     "lark:data:message.body"
                   ]
                 },
                 "thread_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "会话id",
+                  "required": false,
+                  "example": "tfuh9N4WnzU6jdDw="
                 },
                 "body_preview": {
                   "type": "string",
                   "description": "The first 100 characters of the plain text content of the email body, based on base64url encoding, are used to quickly preview the core content of the email without decoding the full body",
-                  "required": false
+                  "required": false,
+                  "example": "Hello, this is a draft email."
                 },
                 "label_ids": {
                   "type": "array",
-                  "description": "",
+                  "description": "标签ID",
                   "required": false
                 },
                 "folder_id": {
@@ -3033,20 +3207,21 @@
                 },
                 "security_level": {
                   "type": "object",
-                  "description": "",
+                  "description": "安全信息",
                   "required": false,
                   "ref": "security_level",
                   "properties": {
                     "is_risk": {
                       "type": "boolean",
                       "description": "Is it risk email?",
-                      "required": false
+                      "required": false,
+                      "example": false
                     },
                     "risk_banner_level": {
                       "type": "string",
                       "description": "risk email level",
                       "required": false,
-                      "example": "warning",
+                      "example": "WARNING",
                       "options": [
                         {
                           "value": "WARNING",
@@ -3054,11 +3229,11 @@
                         },
                         {
                           "value": "DANGER",
-                          "description": ""
+                          "description": "危险"
                         },
                         {
                           "value": "INFO",
-                          "description": ""
+                          "description": "提示"
                         }
                       ],
                       "enum": [
@@ -3080,23 +3255,23 @@
                         },
                         {
                           "value": "IMPERSONATE_DOMAIN",
-                          "description": ""
+                          "description": "相似域名仿冒"
                         },
                         {
                           "value": "IMPERSONATE_KP_NAME",
-                          "description": ""
+                          "description": "KP姓名仿冒"
                         },
                         {
                           "value": "UNAUTH_EXTERNAL",
-                          "description": ""
+                          "description": "未认证外部域名"
                         },
                         {
                           "value": "MALICIOUS_URL",
-                          "description": ""
+                          "description": "恶意链接"
                         },
                         {
                           "value": "MALICIOUS_ATTACHMENT",
-                          "description": ""
+                          "description": "高危附件"
                         },
                         {
                           "value": "PHISHING",
@@ -3104,7 +3279,7 @@
                         },
                         {
                           "value": "IMPERSONATE_PARTNER",
-                          "description": ""
+                          "description": "仿冒合作伙伴"
                         },
                         {
                           "value": "EXTERNAL_ENCRYPTION_ATTACHMENT",
@@ -3128,35 +3303,35 @@
                       "type": "boolean",
                       "description": "Is the sender an external email?",
                       "required": false,
-                      "example": "false"
+                      "example": false
                     },
                     "via_domain": {
                       "type": "string",
-                      "description": "",
+                      "description": "代发或伪造邮件展示SPF或DKIM域名",
                       "required": false,
                       "example": "larksuite.com"
                     },
                     "spam_banner_type": {
                       "type": "string",
-                      "description": "",
+                      "description": "垃圾邮件原因",
                       "required": false,
                       "example": "USER_REPORT",
                       "options": [
                         {
                           "value": "USER_REPORT",
-                          "description": ""
+                          "description": "用户曾标记邮件是垃圾邮件"
                         },
                         {
                           "value": "USER_BLOCK",
-                          "description": ""
+                          "description": "用户曾将发件人的邮件标记为垃圾邮件"
                         },
                         {
                           "value": "ANTI_SPAM",
-                          "description": ""
+                          "description": "系统判为垃圾邮件"
                         },
                         {
                           "value": "USER_RULE",
-                          "description": ""
+                          "description": "命中收信规则进入垃圾邮件"
                         },
                         {
                           "value": "BLOCK_DOMIN",
@@ -3164,7 +3339,7 @@
                         },
                         {
                           "value": "BLOCK_ADDRESS",
-                          "description": ""
+                          "description": "用户已拦截来自该邮件地址的邮件"
                         }
                       ],
                       "enum": [
@@ -3179,13 +3354,13 @@
                     },
                     "spam_user_rule_id": {
                       "type": "string",
-                      "description": "",
+                      "description": "命中的收信规则ID",
                       "required": false,
                       "example": "7618365627924925388"
                     },
                     "spam_banner_info": {
                       "type": "string",
-                      "description": "",
+                      "description": "命中用户黑名单的地址或域名信息",
                       "required": false,
                       "example": "larksuite.com"
                     }
@@ -3194,12 +3369,14 @@
                 "references": {
                   "type": "string",
                   "description": "References to headers",
-                  "required": false
+                  "required": false,
+                  "example": "<5678.abcd@test.com>\\r\\n\\t<1234.abcd@message-id>"
                 },
                 "body_calendar": {
                   "type": "string",
-                  "description": "",
+                  "description": "日历邀请内容(base64url)。当邮件包含标准RFC 5545格式的日历邀请时返回，解码后为ICS文本",
                   "required": false,
+                  "example": "QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KLi4uDQpFTkQ6VkNBTEVOREFS",
                   "annotations": [
                     "lark:data:message.body"
                   ]
@@ -3233,7 +3410,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "adc@abc.com"
             }
           },
           "parameterOrder": [
@@ -3258,7 +3436,8 @@
             "add_folder": {
               "type": "string",
               "description": "Folder to be moved into. Supports INBOX, SENT, SPAM, ARCHIVED and custom folder IDs",
-              "required": false
+              "required": false,
+              "example": "INBOX"
             }
           },
           "scopes": [
@@ -3282,7 +3461,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "me"
             }
           },
           "parameterOrder": [
@@ -3323,26 +3503,27 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Message ID, the method for obtaining ID is shown in [List Emails](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list)"
+              "description": "Message ID, the method for obtaining ID is shown in List Emails",
+              "example": "TUlHc1NoWFhJMXgyUi9VZTNVL3h6UnlkRUdzPQ=="
             },
             "format": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "format type",
+              "description": "Mail content to obtain. Supports full/plain_text_full/metadata",
               "example": "full",
               "options": [
                 {
                   "value": "full",
-                  "description": ""
+                  "description": "全文，包括标签、文件夹、主题、收发件人、纯文本、HTML等信息"
                 },
                 {
                   "value": "plain_text_full",
-                  "description": ""
+                  "description": "全文，只返回纯文本正文内容，不返回HTML。返回内容包括标签、文件夹、主题、收发件人、纯文本等信息"
                 },
                 {
                   "value": "metadata",
-                  "description": ""
+                  "description": "邮件元数据信息，包括标签、文件夹、主题、收发件人、摘要等信息，不返回正文内容"
                 }
               ],
               "enumName": "mail_message_format_type",
@@ -3366,8 +3547,9 @@
               "properties": {
                 "subject": {
                   "type": "string",
-                  "description": "",
+                  "description": "主题",
                   "required": false,
+                  "example": "邮件标题",
                   "annotations": [
                     "lark:data:message.subject"
                   ]
@@ -3382,12 +3564,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -3403,12 +3586,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -3416,7 +3600,7 @@
                 },
                 "bcc": {
                   "type": "array",
-                  "description": "",
+                  "description": "密送",
                   "required": false,
                   "annotations": [
                     "lark:data:message.address"
@@ -3424,12 +3608,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -3437,7 +3622,7 @@
                 },
                 "head_from": {
                   "type": "object",
-                  "description": "",
+                  "description": "发件人",
                   "required": false,
                   "ref": "mail_address",
                   "annotations": [
@@ -3446,12 +3631,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -3461,6 +3647,7 @@
                   "type": "string",
                   "description": "Body (base64url)",
                   "required": false,
+                  "example": "PHA-SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC48L3A-",
                   "annotations": [
                     "lark:data:message.body"
                   ]
@@ -3473,19 +3660,21 @@
                 },
                 "message_state": {
                   "type": "integer",
-                  "description": "",
+                  "description": "邮件状态，1为收信，2为发信，3为草稿",
                   "required": false,
-                  "example": "1"
+                  "example": 1
                 },
                 "smtp_message_id": {
                   "type": "string",
                   "description": "RFC protocol id",
-                  "required": false
+                  "required": false,
+                  "example": "message-id@example.com"
                 },
                 "message_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "邮件id",
+                  "required": false,
+                  "example": "tfuh9N4WnzU6jdDw="
                 },
                 "attachments": {
                   "type": "array",
@@ -3498,12 +3687,14 @@
                     "filename": {
                       "type": "string",
                       "description": "attachment file name",
-                      "required": true
+                      "required": true,
+                      "example": "helloworld.txt"
                     },
                     "id": {
                       "type": "string",
                       "description": "Attachment ID",
                       "required": false,
+                      "example": "YQqYbQHoQoDqXjxWKhJbo8Gicjf",
                       "annotations": [
                         "readOnly"
                       ]
@@ -3512,20 +3703,20 @@
                       "type": "integer",
                       "description": "Attachment type",
                       "required": false,
-                      "example": "1",
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
-                          "description": ""
+                          "value": 1,
+                          "description": "普通附件"
                         },
                         {
-                          "value": "2",
-                          "description": ""
+                          "value": 2,
+                          "description": "超大附件"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "AttachmentType",
                       "annotations": [
@@ -3536,37 +3727,42 @@
                     },
                     "is_inline": {
                       "type": "boolean",
-                      "description": "",
-                      "required": false
+                      "description": "是否为内联图片，true 表示是内联图片",
+                      "required": false,
+                      "example": false
                     },
                     "cid": {
                       "type": "string",
                       "description": "Content ID, HTML refers to the image via cid: protocol",
-                      "required": false
+                      "required": false,
+                      "example": "image1@example.com"
                     }
                   }
                 },
                 "body_plain_text": {
                   "type": "string",
-                  "description": "",
+                  "description": "正文纯文本(base64url)",
                   "required": false,
+                  "example": "SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC4",
                   "annotations": [
                     "lark:data:message.body"
                   ]
                 },
                 "thread_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "会话id",
+                  "required": false,
+                  "example": "tfuh9N4WnzU6jdDw="
                 },
                 "body_preview": {
                   "type": "string",
                   "description": "The first 100 characters of the plain text content of the email body, based on base64url encoding, are used to quickly preview the core content of the email without decoding the full body",
-                  "required": false
+                  "required": false,
+                  "example": "Hello, this is a draft email."
                 },
                 "label_ids": {
                   "type": "array",
-                  "description": "",
+                  "description": "标签ID",
                   "required": false
                 },
                 "folder_id": {
@@ -3620,20 +3816,21 @@
                 },
                 "security_level": {
                   "type": "object",
-                  "description": "",
+                  "description": "安全信息",
                   "required": false,
                   "ref": "security_level",
                   "properties": {
                     "is_risk": {
                       "type": "boolean",
                       "description": "Is it risk email?",
-                      "required": false
+                      "required": false,
+                      "example": false
                     },
                     "risk_banner_level": {
                       "type": "string",
                       "description": "risk email level",
                       "required": false,
-                      "example": "warning",
+                      "example": "WARNING",
                       "options": [
                         {
                           "value": "WARNING",
@@ -3641,11 +3838,11 @@
                         },
                         {
                           "value": "DANGER",
-                          "description": ""
+                          "description": "危险"
                         },
                         {
                           "value": "INFO",
-                          "description": ""
+                          "description": "提示"
                         }
                       ],
                       "enum": [
@@ -3667,23 +3864,23 @@
                         },
                         {
                           "value": "IMPERSONATE_DOMAIN",
-                          "description": ""
+                          "description": "相似域名仿冒"
                         },
                         {
                           "value": "IMPERSONATE_KP_NAME",
-                          "description": ""
+                          "description": "KP姓名仿冒"
                         },
                         {
                           "value": "UNAUTH_EXTERNAL",
-                          "description": ""
+                          "description": "未认证外部域名"
                         },
                         {
                           "value": "MALICIOUS_URL",
-                          "description": ""
+                          "description": "恶意链接"
                         },
                         {
                           "value": "MALICIOUS_ATTACHMENT",
-                          "description": ""
+                          "description": "高危附件"
                         },
                         {
                           "value": "PHISHING",
@@ -3691,7 +3888,7 @@
                         },
                         {
                           "value": "IMPERSONATE_PARTNER",
-                          "description": ""
+                          "description": "仿冒合作伙伴"
                         },
                         {
                           "value": "EXTERNAL_ENCRYPTION_ATTACHMENT",
@@ -3715,35 +3912,35 @@
                       "type": "boolean",
                       "description": "Is the sender an external email?",
                       "required": false,
-                      "example": "false"
+                      "example": false
                     },
                     "via_domain": {
                       "type": "string",
-                      "description": "",
+                      "description": "代发或伪造邮件展示SPF或DKIM域名",
                       "required": false,
                       "example": "larksuite.com"
                     },
                     "spam_banner_type": {
                       "type": "string",
-                      "description": "",
+                      "description": "垃圾邮件原因",
                       "required": false,
                       "example": "USER_REPORT",
                       "options": [
                         {
                           "value": "USER_REPORT",
-                          "description": ""
+                          "description": "用户曾标记邮件是垃圾邮件"
                         },
                         {
                           "value": "USER_BLOCK",
-                          "description": ""
+                          "description": "用户曾将发件人的邮件标记为垃圾邮件"
                         },
                         {
                           "value": "ANTI_SPAM",
-                          "description": ""
+                          "description": "系统判为垃圾邮件"
                         },
                         {
                           "value": "USER_RULE",
-                          "description": ""
+                          "description": "命中收信规则进入垃圾邮件"
                         },
                         {
                           "value": "BLOCK_DOMIN",
@@ -3751,7 +3948,7 @@
                         },
                         {
                           "value": "BLOCK_ADDRESS",
-                          "description": ""
+                          "description": "用户已拦截来自该邮件地址的邮件"
                         }
                       ],
                       "enum": [
@@ -3766,13 +3963,13 @@
                     },
                     "spam_user_rule_id": {
                       "type": "string",
-                      "description": "",
+                      "description": "命中的收信规则ID",
                       "required": false,
                       "example": "7618365627924925388"
                     },
                     "spam_banner_info": {
                       "type": "string",
-                      "description": "",
+                      "description": "命中用户黑名单的地址或域名信息",
                       "required": false,
                       "example": "larksuite.com"
                     }
@@ -3781,12 +3978,14 @@
                 "references": {
                   "type": "string",
                   "description": "References to headers",
-                  "required": false
+                  "required": false,
+                  "example": "<5678.abcd@test.com>\\r\\n\\t<1234.abcd@message-id>"
                 },
                 "body_calendar": {
                   "type": "string",
-                  "description": "",
+                  "description": "日历邀请内容(base64url)。当邮件包含标准RFC 5545格式的日历邀请时返回，解码后为ICS文本",
                   "required": false,
+                  "example": "QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KLi4uDQpFTkQ6VkNBTEVOREFS",
                   "annotations": [
                     "lark:data:message.body"
                   ]
@@ -3828,6 +4027,7 @@
               "location": "query",
               "required": true,
               "description": "page size",
+              "example": 1,
               "max": "20",
               "min": "1"
             },
@@ -3835,26 +4035,29 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "xxx"
             },
             "folder_id": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Folder ID. The method for obtaining ID is shown in [List Email Folders](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/list)",
+              "description": "Folder ID. The method for obtaining ID is shown in List Email Folders",
               "example": "INBOX or user folder id"
             },
             "only_unread": {
               "type": "boolean",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "是否只查询未读邮件",
+              "example": true
             },
             "label_id": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Label ID"
+              "description": "Label ID, support IMPORTANT, OTHER, FLAGGED, SCHEDULED and custom folder labels",
+              "example": "FLAGGED"
             }
           },
           "parameterOrder": [
@@ -3868,13 +4071,15 @@
             },
             "page_token": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "分页标记，当 has_more 为 true 时，会同时返回新的 page_token，否则不返回 page_token",
+              "required": false,
+              "example": "xxx"
             },
             "has_more": {
               "type": "boolean",
-              "description": "Whether the response body has more parameters",
-              "required": false
+              "description": "Whether there are more items",
+              "required": false,
+              "example": true
             }
           },
           "scopes": [
@@ -3897,13 +4102,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User mailbox email address, used as the user mailbox identity. You can obtain the primary mailbox address from the Get user mailbox profile API. When calling this API with a user_access_token, you can use the placeholder me to indicate the primary mailbox of the currently authorized user"
+              "description": "User mailbox email address, used as the user mailbox identity. You can obtain the primary mailbox address from the Get user mailbox profile API. When calling this API with a user_access_token, you can use the placeholder me to indicate the primary mailbox of the currently authorized user",
+              "example": "abc@abc.com"
             },
             "message_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Mail ID, which can be obtained by listing email interfaces, receiving event notifications, etc"
+              "description": "Mail ID, which can be obtained by listing email interfaces, receiving event notifications, etc",
+              "example": "bskfsxxcvve="
             }
           },
           "parameterOrder": [
@@ -3924,7 +4131,8 @@
             "add_folder": {
               "type": "string",
               "description": "Folder ID to move the message into. Supported values include INBOX, SENT, SPAM, ARCHIVED, and custom folder IDs. This parameter is optional and can be combined with add_label_ids and remove_label_ids. If set, the message is moved to the specified folder in the same request. Omit this field if you only need to update labels",
-              "required": false
+              "required": false,
+              "example": "INBOX"
             }
           },
           "scopes": [
@@ -3983,12 +4191,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -3998,45 +4207,45 @@
                   "type": "integer",
                   "description": "投递状态",
                   "required": false,
-                  "example": "1",
+                  "example": 1,
                   "options": [
                     {
-                      "value": "1",
+                      "value": 0,
+                      "description": "未知"
+                    },
+                    {
+                      "value": 1,
                       "description": "正在投递"
                     },
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "投递失败重试"
                     },
                     {
-                      "value": "3",
+                      "value": 3,
                       "description": "投递失败退信"
                     },
                     {
-                      "value": "4",
+                      "value": 4,
                       "description": "投递成功"
                     },
                     {
-                      "value": "5",
+                      "value": 5,
                       "description": "待审批"
                     },
                     {
-                      "value": "6",
+                      "value": 6,
                       "description": "审批拒绝"
-                    },
-                    {
-                      "value": "0",
-                      "description": "未知"
                     }
                   ],
                   "enum": [
-                    "1",
-                    "2",
-                    "3",
-                    "4",
-                    "5",
-                    "6",
-                    "0"
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
                   ],
                   "enumName": "send_status_detail_status"
                 },
@@ -4044,7 +4253,7 @@
                   "type": "integer",
                   "description": "最后更新时间（Unix 时间戳，秒）",
                   "required": false,
-                  "example": "1700000000",
+                  "example": 1700000000,
                   "max": "170000000000",
                   "min": "0"
                 }
@@ -4070,13 +4279,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "me"
             },
             "message_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Mail ID, which can be obtained by listing the mail interface"
+              "description": "Mail ID, which can be obtained by listing the mail interface",
+              "example": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ=="
             }
           },
           "parameterOrder": [
@@ -4126,19 +4337,20 @@
                   "type": "integer",
                   "description": "Match type",
                   "required": true,
+                  "example": 1,
                   "options": [
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Meet all conditions"
                     },
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Meet any condition"
                     }
                   ],
                   "enum": [
-                    "1",
-                    "2"
+                    1,
+                    2
                   ],
                   "enumName": "RuleConditionMatchType",
                   "max": "2",
@@ -4153,79 +4365,80 @@
                       "type": "integer",
                       "description": "Match condition left value",
                       "required": true,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Sender"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Recipient"
                         },
                         {
-                          "value": "3",
+                          "value": 3,
                           "description": "CC recipient"
                         },
                         {
-                          "value": "4",
+                          "value": 4,
                           "description": "To or Cc recipient"
                         },
                         {
-                          "value": "6",
+                          "value": 6,
                           "description": "Subject"
                         },
                         {
-                          "value": "7",
+                          "value": 7,
                           "description": "Body"
                         },
                         {
-                          "value": "8",
+                          "value": 8,
                           "description": "Attachment name"
                         },
                         {
-                          "value": "9",
+                          "value": 9,
                           "description": "Attachment type"
                         },
                         {
-                          "value": "10",
-                          "description": "Any recipient"
+                          "value": 10,
+                          "description": "Any address"
                         },
                         {
-                          "value": "12",
+                          "value": 12,
                           "description": "All mails"
                         },
                         {
-                          "value": "13",
+                          "value": 13,
                           "description": "Mail is external"
                         },
                         {
-                          "value": "14",
+                          "value": 14,
                           "description": "Mail is spam"
                         },
                         {
-                          "value": "15",
+                          "value": 15,
                           "description": "Mail is not spam"
                         },
                         {
-                          "value": "16",
+                          "value": 16,
                           "description": "Mail has attachment"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "12",
-                        "13",
-                        "14",
-                        "15",
-                        "16"
+                        1,
+                        2,
+                        3,
+                        4,
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        12,
+                        13,
+                        14,
+                        15,
+                        16
                       ],
                       "enumName": "RuleConditionItemType",
                       "max": "16",
@@ -4235,49 +4448,50 @@
                       "type": "integer",
                       "description": "Match condition operator",
                       "required": false,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Contains"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Does not contain"
                         },
                         {
-                          "value": "3",
+                          "value": 3,
                           "description": "Starts with"
                         },
                         {
-                          "value": "4",
+                          "value": 4,
                           "description": "Ends with"
                         },
                         {
-                          "value": "5",
+                          "value": 5,
                           "description": "Is"
                         },
                         {
-                          "value": "6",
+                          "value": 6,
                           "description": "Is not"
                         },
                         {
-                          "value": "7",
+                          "value": 7,
                           "description": "Include me"
                         },
                         {
-                          "value": "10",
+                          "value": 10,
                           "description": "Is empty"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "10"
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        10
                       ],
                       "enumName": "RuleConditionItemOperator",
                       "max": "10",
@@ -4286,7 +4500,8 @@
                     "input": {
                       "type": "string",
                       "description": "Match condition right value",
-                      "required": false
+                      "required": false,
+                      "example": "hello@world.com"
                     }
                   }
                 }
@@ -4307,64 +4522,65 @@
                       "type": "integer",
                       "description": "Operation type",
                       "required": true,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Archive"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Delete it"
                         },
                         {
-                          "value": "3",
+                          "value": 3,
                           "description": "Mark as read"
                         },
                         {
-                          "value": "4",
+                          "value": 4,
                           "description": "Mark as spam"
                         },
                         {
-                          "value": "5",
+                          "value": 5,
                           "description": "Never mark as spam"
                         },
                         {
-                          "value": "8",
+                          "value": 8,
                           "description": "Label as (not supported now)"
                         },
                         {
-                          "value": "9",
+                          "value": 9,
                           "description": "Flag"
                         },
                         {
-                          "value": "10",
+                          "value": 10,
                           "description": "No notification"
                         },
                         {
-                          "value": "11",
+                          "value": 11,
                           "description": "Move to user folder"
                         },
                         {
-                          "value": "12",
+                          "value": 12,
                           "description": "Automatically forward (not supported now)"
                         },
                         {
-                          "value": "13",
+                          "value": 13,
                           "description": "Share to chat (not supported now)"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13"
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13
                       ],
                       "enumName": "RuleActionItemType",
                       "max": "13",
@@ -4373,7 +4589,8 @@
                     "input": {
                       "type": "string",
                       "description": "When the type is \"Move to folder,\" fill this field with the ID of the folder",
-                      "required": false
+                      "required": false,
+                      "example": "283412371233"
                     }
                   }
                 }
@@ -4382,7 +4599,8 @@
             "ignore_the_rest_of_rules": {
               "type": "boolean",
               "description": "Is terminal filter",
-              "required": true
+              "required": true,
+              "example": false
             },
             "name": {
               "type": "string",
@@ -4393,7 +4611,8 @@
             "is_enable": {
               "type": "boolean",
               "description": "Is enabled",
-              "required": true
+              "required": true,
+              "example": false
             }
           },
           "responseBody": {
@@ -4407,6 +4626,7 @@
                   "type": "string",
                   "description": "ID",
                   "required": false,
+                  "example": "123124123123",
                   "annotations": [
                     "readOnly"
                   ]
@@ -4421,19 +4641,20 @@
                       "type": "integer",
                       "description": "Match type",
                       "required": true,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Meet all conditions"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Meet any condition"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "RuleConditionMatchType",
                       "max": "2",
@@ -4462,7 +4683,8 @@
                 "ignore_the_rest_of_rules": {
                   "type": "boolean",
                   "description": "Is terminal filter",
-                  "required": true
+                  "required": true,
+                  "example": false
                 },
                 "name": {
                   "type": "string",
@@ -4473,7 +4695,8 @@
                 "is_enable": {
                   "type": "boolean",
                   "description": "Is enabled",
-                  "required": true
+                  "required": true,
+                  "example": false
                 }
               }
             }
@@ -4499,13 +4722,14 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": ""
+              "description": "用户邮箱地址 或 输入me代表当前调用接口用户",
+              "example": "user@xxx.xx 或 me"
             },
             "rule_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Rule ID. The method for obtaining ID is shown in [List Auto Filters](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list)",
+              "description": "Rule ID. The method for obtaining ID is shown in List Auto Filters",
               "example": "123123123"
             }
           },
@@ -4551,6 +4775,7 @@
                   "type": "string",
                   "description": "ID",
                   "required": false,
+                  "example": "123124123123",
                   "annotations": [
                     "readOnly"
                   ]
@@ -4565,19 +4790,20 @@
                       "type": "integer",
                       "description": "Match type",
                       "required": true,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Meet all conditions"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Meet any condition"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "RuleConditionMatchType",
                       "max": "2",
@@ -4606,7 +4832,8 @@
                 "ignore_the_rest_of_rules": {
                   "type": "boolean",
                   "description": "Is terminal filter",
-                  "required": true
+                  "required": true,
+                  "example": false
                 },
                 "name": {
                   "type": "string",
@@ -4617,7 +4844,8 @@
                 "is_enable": {
                   "type": "boolean",
                   "description": "Is enabled",
-                  "required": true
+                  "required": true,
+                  "example": false
                 }
               }
             }
@@ -4643,7 +4871,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "",
+              "description": "用户邮箱地址，使用 user_access_token 时可使用 me",
               "example": "user@xxx.xx or me"
             }
           },
@@ -4653,8 +4881,9 @@
           "requestBody": {
             "rule_ids": {
               "type": "array",
-              "description": "Auto filter ID list. The method for obtaining ID is shown in [List Auto Filters](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list)",
-              "required": true
+              "description": "Auto filter ID list. The method for obtaining ID is shown in List Auto Filters",
+              "required": true,
+              "example": "111111111"
             }
           },
           "scopes": [
@@ -4685,7 +4914,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Rule ID. The method for obtaining ID is shown in [List Auto Filters](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list)"
+              "description": "Rule ID. The method for obtaining ID is shown in List Auto Filters",
+              "example": "123123123"
             }
           },
           "parameterOrder": [
@@ -4703,19 +4933,20 @@
                   "type": "integer",
                   "description": "Match type",
                   "required": true,
+                  "example": 1,
                   "options": [
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Meet all conditions"
                     },
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Meet any condition"
                     }
                   ],
                   "enum": [
-                    "1",
-                    "2"
+                    1,
+                    2
                   ],
                   "enumName": "RuleConditionMatchType",
                   "max": "2",
@@ -4730,79 +4961,80 @@
                       "type": "integer",
                       "description": "Match condition left value",
                       "required": true,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Sender"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Recipient"
                         },
                         {
-                          "value": "3",
+                          "value": 3,
                           "description": "CC recipient"
                         },
                         {
-                          "value": "4",
+                          "value": 4,
                           "description": "To or Cc recipient"
                         },
                         {
-                          "value": "6",
+                          "value": 6,
                           "description": "Subject"
                         },
                         {
-                          "value": "7",
+                          "value": 7,
                           "description": "Body"
                         },
                         {
-                          "value": "8",
+                          "value": 8,
                           "description": "Attachment name"
                         },
                         {
-                          "value": "9",
+                          "value": 9,
                           "description": "Attachment type"
                         },
                         {
-                          "value": "10",
-                          "description": "Any recipient"
+                          "value": 10,
+                          "description": "Any address"
                         },
                         {
-                          "value": "12",
+                          "value": 12,
                           "description": "All mails"
                         },
                         {
-                          "value": "13",
+                          "value": 13,
                           "description": "Mail is external"
                         },
                         {
-                          "value": "14",
+                          "value": 14,
                           "description": "Mail is spam"
                         },
                         {
-                          "value": "15",
+                          "value": 15,
                           "description": "Mail is not spam"
                         },
                         {
-                          "value": "16",
+                          "value": 16,
                           "description": "Mail has attachment"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "12",
-                        "13",
-                        "14",
-                        "15",
-                        "16"
+                        1,
+                        2,
+                        3,
+                        4,
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        12,
+                        13,
+                        14,
+                        15,
+                        16
                       ],
                       "enumName": "RuleConditionItemType",
                       "max": "16",
@@ -4812,49 +5044,50 @@
                       "type": "integer",
                       "description": "Match condition operator",
                       "required": false,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Contains"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Does not contain"
                         },
                         {
-                          "value": "3",
+                          "value": 3,
                           "description": "Starts with"
                         },
                         {
-                          "value": "4",
+                          "value": 4,
                           "description": "Ends with"
                         },
                         {
-                          "value": "5",
+                          "value": 5,
                           "description": "Is"
                         },
                         {
-                          "value": "6",
+                          "value": 6,
                           "description": "Is not"
                         },
                         {
-                          "value": "7",
+                          "value": 7,
                           "description": "Include me"
                         },
                         {
-                          "value": "10",
+                          "value": 10,
                           "description": "Is empty"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "10"
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        10
                       ],
                       "enumName": "RuleConditionItemOperator",
                       "max": "10",
@@ -4863,7 +5096,8 @@
                     "input": {
                       "type": "string",
                       "description": "Match condition right value",
-                      "required": false
+                      "required": false,
+                      "example": "hello@world.com"
                     }
                   }
                 }
@@ -4884,64 +5118,65 @@
                       "type": "integer",
                       "description": "Operation type",
                       "required": true,
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Archive"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "Delete it"
                         },
                         {
-                          "value": "3",
+                          "value": 3,
                           "description": "Mark as read"
                         },
                         {
-                          "value": "4",
+                          "value": 4,
                           "description": "Mark as spam"
                         },
                         {
-                          "value": "5",
+                          "value": 5,
                           "description": "Never mark as spam"
                         },
                         {
-                          "value": "8",
+                          "value": 8,
                           "description": "Label as (not supported now)"
                         },
                         {
-                          "value": "9",
+                          "value": 9,
                           "description": "Flag"
                         },
                         {
-                          "value": "10",
+                          "value": 10,
                           "description": "No notification"
                         },
                         {
-                          "value": "11",
+                          "value": 11,
                           "description": "Move to user folder"
                         },
                         {
-                          "value": "12",
+                          "value": 12,
                           "description": "Automatically forward (not supported now)"
                         },
                         {
-                          "value": "13",
+                          "value": 13,
                           "description": "Share to chat (not supported now)"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                        "13"
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13
                       ],
                       "enumName": "RuleActionItemType",
                       "max": "13",
@@ -4950,7 +5185,8 @@
                     "input": {
                       "type": "string",
                       "description": "When the type is \"Move to folder,\" fill this field with the ID of the folder",
-                      "required": false
+                      "required": false,
+                      "example": "283412371233"
                     }
                   }
                 }
@@ -4959,7 +5195,8 @@
             "ignore_the_rest_of_rules": {
               "type": "boolean",
               "description": "Is terminal filter",
-              "required": true
+              "required": true,
+              "example": false
             },
             "name": {
               "type": "string",
@@ -4970,7 +5207,8 @@
             "is_enable": {
               "type": "boolean",
               "description": "Is enabled",
-              "required": true
+              "required": true,
+              "example": false
             }
           },
           "scopes": [
@@ -4998,13 +5236,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@example.com"
             },
             "message_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "You need to query the email ID of the withdrawal result, that is, the email ID used when calling the interface [Withdraw Mail] (/ssl: ttdoc/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox - sent_message/recall)"
+              "description": "You need to query the email ID of the withdrawal result, that is, the email ID used when calling the interface [Withdraw Mail]",
+              "example": "om_6f8c3b2d4a9e1f0c"
             }
           },
           "parameterOrder": [
@@ -5016,6 +5256,7 @@
               "type": "string",
               "description": "Overall withdrawal progress",
               "required": false,
+              "example": "done",
               "options": [
                 {
                   "value": "in_progress",
@@ -5036,6 +5277,7 @@
               "type": "string",
               "description": "Withdraw final results, only meaningful recall_status done",
               "required": false,
+              "example": "all_success",
               "options": [
                 {
                   "value": "all_success",
@@ -5065,17 +5307,20 @@
             "success_count": {
               "type": "integer",
               "description": "The number of recipients who have successfully withdrawn",
-              "required": false
+              "required": false,
+              "example": 3
             },
             "failure_count": {
               "type": "integer",
               "description": "Number of recipients who failed to withdraw",
-              "required": false
+              "required": false,
+              "example": 1
             },
             "processing_count": {
               "type": "integer",
               "description": "Number of recipients in process",
-              "required": false
+              "required": false,
+              "example": 0
             },
             "items": {
               "type": "array",
@@ -5085,17 +5330,20 @@
                 "recipient_address": {
                   "type": "string",
                   "description": "Recipient email address",
-                  "required": false
+                  "required": false,
+                  "example": "zhangsan@example.com"
                 },
                 "recipient_name": {
                   "type": "string",
                   "description": "recipient display name",
-                  "required": false
+                  "required": false,
+                  "example": "张三"
                 },
                 "status": {
                   "type": "string",
                   "description": "The recipient's withdrawal status",
                   "required": false,
+                  "example": "success",
                   "options": [
                     {
                       "value": "success",
@@ -5119,8 +5367,9 @@
                 },
                 "fail_reason": {
                   "type": "string",
-                  "description": "Withdraw the reason for the failure, only when the status is failed",
+                  "description": "Reason for the recall failure; present only when status is fail",
                   "required": false,
+                  "example": "message_has_been_read",
                   "options": [
                     {
                       "value": "message_has_been_read",
@@ -5155,12 +5404,14 @@
                 "is_mailing_list": {
                   "type": "boolean",
                   "description": "Is it a mailing group address?",
-                  "required": false
+                  "required": false,
+                  "example": true
                 },
                 "mailing_list_success_count": {
                   "type": "integer",
                   "description": "Number of successful withdrawals in the mailing group, only when is_mailing_list true",
                   "required": false,
+                  "example": 5,
                   "max": "2147483647",
                   "min": "0"
                 },
@@ -5168,6 +5419,7 @@
                   "type": "integer",
                   "description": "The number of failed retractions in the mail group, only when is_mailing_list true",
                   "required": false,
+                  "example": 0,
                   "max": "2147483647",
                   "min": "0"
                 },
@@ -5175,6 +5427,7 @@
                   "type": "integer",
                   "description": "Message group completion percentage 0-100, value only when is_mailing_list true",
                   "required": false,
+                  "example": 100,
                   "max": "2147483647",
                   "min": "0"
                 }
@@ -5201,13 +5454,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "me"
             },
             "message_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "The email ID that needs to be withdrawn, that is, the parameter returned by the call interface [Send Draft] (/ssl: ttdoc/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox -draft/send) message_id"
+              "description": "The email ID that needs to be withdrawn, that is, the parameter returned by the call interface [Send Draft] message_id",
+              "example": "xxx"
             }
           },
           "parameterOrder": [
@@ -5219,14 +5474,15 @@
               "type": "string",
               "description": "Withdrawn status. Returns unavailable only if withdrawal is not supported",
               "required": false,
+              "example": "unavailable",
               "options": [
                 {
                   "value": "unavailable",
-                  "description": ""
+                  "description": "邮件不可撤回"
                 },
                 {
                   "value": "available",
-                  "description": ""
+                  "description": "邮件可撤回"
                 }
               ],
               "enum": [
@@ -5239,6 +5495,7 @@
               "type": "string",
               "description": "Reason for withdrawal not supported. Returns only if recall_status unavailable",
               "required": false,
+              "example": "recall_not_enabled",
               "options": [
                 {
                   "value": "recall_not_enabled",
@@ -5254,7 +5511,7 @@
                 },
                 {
                   "value": "already_recalled",
-                  "description": "The email has been initiated and the pot has been withdrawn."
+                  "description": "A recall has already been initiated for this email"
                 },
                 {
                   "value": "not_delivered",
@@ -5301,7 +5558,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Email address. Under User Identity, you can enter me on behalf of the user"
+              "description": "Email address. Under User Identity, you can enter me on behalf of the user",
+              "example": "user@example.com"
             }
           },
           "parameterOrder": [
@@ -5316,12 +5574,14 @@
                 "email_address": {
                   "type": "string",
                   "description": "email address",
-                  "required": false
+                  "required": false,
+                  "example": "abc@abc.com"
                 },
                 "email_type": {
                   "type": "string",
                   "description": "Email address type",
                   "required": false,
+                  "example": "USER_PRIMARY",
                   "options": [
                     {
                       "value": "MAIL_GROUP",
@@ -5355,7 +5615,8 @@
                 "name": {
                   "type": "string",
                   "description": "email name",
-                  "required": false
+                  "required": false,
+                  "example": "Mike"
                 }
               }
             }
@@ -5415,12 +5676,14 @@
                 "attachment_id": {
                   "type": "string",
                   "description": "Attachment ID",
-                  "required": false
+                  "required": false,
+                  "example": "[\"YQqYbQHoQoDqXjxWKhJbo8Gicjf\"]"
                 },
                 "download_url": {
                   "type": "string",
                   "description": "Download link",
-                  "required": false
+                  "required": false,
+                  "example": "https://sample.feishu.cn/mail/attachment/example"
                 }
               }
             },
@@ -5431,13 +5694,15 @@
               "properties": {
                 "attachment_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "附件 ID",
+                  "required": false,
+                  "example": "YQqYbQHoQoDqXjxWKhJbo8Gicjf"
                 },
                 "reason": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "失败原因",
+                  "required": false,
+                  "example": "attachment_not_found"
                 }
               }
             }
@@ -5502,7 +5767,7 @@
                   "type": "boolean",
                   "description": "是否为纯文本模式。`true` 表示模板正文按纯文本渲染，`false` 表示按 HTML 渲染。默认 `false`（HTML 模式）",
                   "required": false,
-                  "example": "false"
+                  "example": false
                 },
                 "tos": {
                   "type": "array",
@@ -5511,12 +5776,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5529,12 +5795,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5547,12 +5814,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5572,26 +5840,27 @@
                     "id": {
                       "type": "string",
                       "description": "附件 id（Drive file_key，用于引用 Drive medias 上传接口返回的 file_key）",
-                      "required": false
+                      "required": false,
+                      "example": "boxcnrHpsg1QDqXPrJXWPwbqsKh"
                     },
                     "attachment_type": {
                       "type": "integer",
                       "description": "附件类型",
                       "required": false,
-                      "example": "1",
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "普通附件"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "超大附件"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "AttachmentType",
                       "max": "2",
@@ -5601,7 +5870,7 @@
                       "type": "boolean",
                       "description": "是否为内联图片，true 表示是内联图片",
                       "required": false,
-                      "example": "false"
+                      "example": false
                     },
                     "cid": {
                       "type": "string",
@@ -5652,7 +5921,7 @@
                   "type": "boolean",
                   "description": "是否为纯文本模式。`true` 表示模板正文按纯文本渲染，`false` 表示按 HTML 渲染。默认 `false`（HTML 模式）",
                   "required": false,
-                  "example": "false"
+                  "example": false
                 },
                 "tos": {
                   "type": "array",
@@ -5661,12 +5930,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5679,12 +5949,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5697,12 +5968,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5722,26 +5994,27 @@
                     "id": {
                       "type": "string",
                       "description": "附件 id（Drive file_key，用于引用 Drive medias 上传接口返回的 file_key）",
-                      "required": false
+                      "required": false,
+                      "example": "boxcnrHpsg1QDqXPrJXWPwbqsKh"
                     },
                     "attachment_type": {
                       "type": "integer",
                       "description": "附件类型",
                       "required": false,
-                      "example": "1",
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "普通附件"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "超大附件"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "AttachmentType",
                       "max": "2",
@@ -5751,7 +6024,7 @@
                       "type": "boolean",
                       "description": "是否为内联图片，true 表示是内联图片",
                       "required": false,
-                      "example": "false"
+                      "example": false
                     },
                     "cid": {
                       "type": "string",
@@ -5883,7 +6156,7 @@
                   "type": "boolean",
                   "description": "是否为纯文本模式。`true` 表示模板正文按纯文本渲染，`false` 表示按 HTML 渲染。默认 `false`（HTML 模式）",
                   "required": false,
-                  "example": "false"
+                  "example": false
                 },
                 "tos": {
                   "type": "array",
@@ -5892,12 +6165,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5910,12 +6184,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5928,12 +6203,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -5953,26 +6229,27 @@
                     "id": {
                       "type": "string",
                       "description": "附件 id（Drive file_key，用于引用 Drive medias 上传接口返回的 file_key）",
-                      "required": false
+                      "required": false,
+                      "example": "boxcnrHpsg1QDqXPrJXWPwbqsKh"
                     },
                     "attachment_type": {
                       "type": "integer",
                       "description": "附件类型",
                       "required": false,
-                      "example": "1",
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "普通附件"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "超大附件"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "AttachmentType",
                       "max": "2",
@@ -5982,7 +6259,7 @@
                       "type": "boolean",
                       "description": "是否为内联图片，true 表示是内联图片",
                       "required": false,
-                      "example": "false"
+                      "example": false
                     },
                     "cid": {
                       "type": "string",
@@ -6124,7 +6401,7 @@
                   "type": "boolean",
                   "description": "是否为纯文本模式。`true` 表示模板正文按纯文本渲染，`false` 表示按 HTML 渲染。默认 `false`（HTML 模式）",
                   "required": false,
-                  "example": "false"
+                  "example": false
                 },
                 "tos": {
                   "type": "array",
@@ -6133,12 +6410,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -6151,12 +6429,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -6169,12 +6448,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -6194,26 +6474,27 @@
                     "id": {
                       "type": "string",
                       "description": "附件 id（Drive file_key，用于引用 Drive medias 上传接口返回的 file_key）",
-                      "required": false
+                      "required": false,
+                      "example": "boxcnrHpsg1QDqXPrJXWPwbqsKh"
                     },
                     "attachment_type": {
                       "type": "integer",
                       "description": "附件类型",
                       "required": false,
-                      "example": "1",
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "普通附件"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "超大附件"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "AttachmentType",
                       "max": "2",
@@ -6223,7 +6504,7 @@
                       "type": "boolean",
                       "description": "是否为内联图片，true 表示是内联图片",
                       "required": false,
-                      "example": "false"
+                      "example": false
                     },
                     "cid": {
                       "type": "string",
@@ -6274,7 +6555,7 @@
                   "type": "boolean",
                   "description": "是否为纯文本模式。`true` 表示模板正文按纯文本渲染，`false` 表示按 HTML 渲染。默认 `false`（HTML 模式）",
                   "required": false,
-                  "example": "false"
+                  "example": false
                 },
                 "tos": {
                   "type": "array",
@@ -6283,12 +6564,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -6301,12 +6583,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -6319,12 +6602,13 @@
                   "properties": {
                     "mail_address": {
                       "type": "string",
-                      "description": "",
-                      "required": true
+                      "description": "邮件地址",
+                      "required": true,
+                      "example": "user@xxx.xx"
                     },
                     "name": {
                       "type": "string",
-                      "description": "",
+                      "description": "名称",
                       "required": false,
                       "example": "Mike"
                     }
@@ -6344,26 +6628,27 @@
                     "id": {
                       "type": "string",
                       "description": "附件 id（Drive file_key，用于引用 Drive medias 上传接口返回的 file_key）",
-                      "required": false
+                      "required": false,
+                      "example": "boxcnrHpsg1QDqXPrJXWPwbqsKh"
                     },
                     "attachment_type": {
                       "type": "integer",
                       "description": "附件类型",
                       "required": false,
-                      "example": "1",
+                      "example": 1,
                       "options": [
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "普通附件"
                         },
                         {
-                          "value": "2",
+                          "value": 2,
                           "description": "超大附件"
                         }
                       ],
                       "enum": [
-                        "1",
-                        "2"
+                        1,
+                        2
                       ],
                       "enumName": "AttachmentType",
                       "max": "2",
@@ -6373,7 +6658,7 @@
                       "type": "boolean",
                       "description": "是否为内联图片，true 表示是内联图片",
                       "required": false,
-                      "example": "false"
+                      "example": false
                     },
                     "cid": {
                       "type": "string",
@@ -6420,7 +6705,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "me"
             }
           },
           "parameterOrder": [
@@ -6440,7 +6726,8 @@
             "add_folder": {
               "type": "string",
               "description": "Folder to be moved into. Supports INBOX, SENT, SPAM, ARCHIVED and custom folder IDs",
-              "required": false
+              "required": false,
+              "example": "INBOX"
             },
             "thread_ids": {
               "type": "array",
@@ -6469,7 +6756,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "me"
             }
           },
           "parameterOrder": [
@@ -6503,31 +6791,34 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             },
             "thread_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Mail thread ID. It can be obtained through the interface return value of sending mail, replying to mail, or getting mail details interface query"
+              "description": "Mail thread ID. It can be obtained through the interface return value of sending mail, replying to mail, or getting mail details interface query",
+              "example": "th_xxxxxxxxxxxx"
             },
             "format": {
               "type": "string",
               "location": "query",
               "required": false,
               "description": "Specifies the returned mail content format. Supported values: full, plain_text_full, and metadata. Default: full, which returns complete content such as labels, folders, subject, sender, HTML body, and plain text body",
+              "example": "full",
               "options": [
                 {
                   "value": "full",
-                  "description": ""
+                  "description": "全文，包括标签、文件夹、主题、收发件人、纯文本、HTML等信息"
                 },
                 {
                   "value": "plain_text_full",
-                  "description": ""
+                  "description": "全文，只返回纯文本正文内容，不返回HTML。返回内容包括标签、文件夹、主题、收发件人、纯文本等信息"
                 },
                 {
                   "value": "metadata",
-                  "description": ""
+                  "description": "邮件元数据信息，包括标签、文件夹、主题、收发件人、摘要等信息，不返回正文内容"
                 }
               ],
               "enumName": "mail_message_format_type",
@@ -6542,7 +6833,7 @@
               "location": "query",
               "required": false,
               "description": "Whether to include messages from the spam folder (SPAM) and trash folder (TRASH). true means include them; false means exclude them. Default: false",
-              "example": "false"
+              "example": false
             }
           },
           "parameterOrder": [
@@ -6565,7 +6856,8 @@
                 "body_preview": {
                   "type": "string",
                   "description": "A summary of the latest email within the thread for a quick preview of the core content of the email",
-                  "required": false
+                  "required": false,
+                  "example": "hello world"
                 },
                 "messages": {
                   "type": "array",
@@ -6574,8 +6866,9 @@
                   "properties": {
                     "subject": {
                       "type": "string",
-                      "description": "",
+                      "description": "主题",
                       "required": false,
+                      "example": "邮件标题",
                       "annotations": [
                         "lark:data:message.subject"
                       ]
@@ -6598,7 +6891,7 @@
                     },
                     "bcc": {
                       "type": "array",
-                      "description": "",
+                      "description": "密送",
                       "required": false,
                       "annotations": [
                         "lark:data:message.address"
@@ -6606,7 +6899,7 @@
                     },
                     "head_from": {
                       "type": "object",
-                      "description": "",
+                      "description": "发件人",
                       "required": false,
                       "ref": "mail_address",
                       "annotations": [
@@ -6617,6 +6910,7 @@
                       "type": "string",
                       "description": "Body (base64url)",
                       "required": false,
+                      "example": "PHA-SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC48L3A-",
                       "annotations": [
                         "lark:data:message.body"
                       ]
@@ -6629,19 +6923,21 @@
                     },
                     "message_state": {
                       "type": "integer",
-                      "description": "",
+                      "description": "邮件状态，1为收信，2为发信，3为草稿",
                       "required": false,
-                      "example": "1"
+                      "example": 1
                     },
                     "smtp_message_id": {
                       "type": "string",
                       "description": "RFC protocol id",
-                      "required": false
+                      "required": false,
+                      "example": "message-id@example.com"
                     },
                     "message_id": {
                       "type": "string",
-                      "description": "",
-                      "required": false
+                      "description": "邮件id",
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "attachments": {
                       "type": "array",
@@ -6653,25 +6949,28 @@
                     },
                     "body_plain_text": {
                       "type": "string",
-                      "description": "",
+                      "description": "正文纯文本(base64url)",
                       "required": false,
+                      "example": "SGVsbG8sIHRoaXMgaXMgYSBkcmFmdCBlbWFpbC4",
                       "annotations": [
                         "lark:data:message.body"
                       ]
                     },
                     "thread_id": {
                       "type": "string",
-                      "description": "",
-                      "required": false
+                      "description": "会话id",
+                      "required": false,
+                      "example": "tfuh9N4WnzU6jdDw="
                     },
                     "body_preview": {
                       "type": "string",
                       "description": "The first 100 characters of the plain text content of the email body, based on base64url encoding, are used to quickly preview the core content of the email without decoding the full body",
-                      "required": false
+                      "required": false,
+                      "example": "Hello, this is a draft email."
                     },
                     "label_ids": {
                       "type": "array",
-                      "description": "",
+                      "description": "标签ID",
                       "required": false
                     },
                     "folder_id": {
@@ -6725,19 +7024,21 @@
                     },
                     "security_level": {
                       "type": "object",
-                      "description": "",
+                      "description": "安全信息",
                       "required": false,
                       "ref": "security_level"
                     },
                     "references": {
                       "type": "string",
                       "description": "References to headers",
-                      "required": false
+                      "required": false,
+                      "example": "<5678.abcd@test.com>\\r\\n\\t<1234.abcd@message-id>"
                     },
                     "body_calendar": {
                       "type": "string",
-                      "description": "",
+                      "description": "日历邀请内容(base64url)。当邮件包含标准RFC 5545格式的日历邀请时返回，解码后为ICS文本",
                       "required": false,
+                      "example": "QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KLi4uDQpFTkQ6VkNBTEVOREFS",
                       "annotations": [
                         "lark:data:message.body"
                       ]
@@ -6767,13 +7068,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "user@xxx.xx 或 me"
             },
             "page_size": {
               "type": "integer",
               "location": "query",
               "required": true,
               "description": "paging size",
+              "example": 1,
               "max": "20",
               "min": "1"
             },
@@ -6781,25 +7084,29 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果",
+              "example": "xxx"
             },
             "folder_id": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Folder ID, support INBOX, SENT, SPAM, ARCHIVED, SCHEDULED, TRASH, DRAFT and custom folder ID"
+              "description": "Folder ID, support INBOX, SENT, SPAM, ARCHIVED, SCHEDULED, TRASH, DRAFT and custom folder ID. Exactly one of folder_id and label_id must be provided; requests with neither or both fail",
+              "example": "INBOX 或者用户文件夹 id"
             },
             "only_unread": {
               "type": "boolean",
               "location": "query",
               "required": false,
-              "description": "Whether to query only unread threads"
+              "description": "Whether to query only unread threads",
+              "example": true
             },
             "label_id": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Label ID, support IMPORTANT, OTHER, FLAGGED and custom label ID"
+              "description": "Label ID, support IMPORTANT, OTHER, FLAGGED and custom label ID. Exactly one of folder_id and label_id must be provided; requests with neither or both fail",
+              "example": "FLAGGED"
             }
           },
           "parameterOrder": [
@@ -6820,19 +7127,22 @@
                 "body_preview": {
                   "type": "string",
                   "description": "A summary of the latest email within the thread for a quick preview of the core content of the email",
-                  "required": false
+                  "required": false,
+                  "example": "hello world"
                 }
               }
             },
             "page_token": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "分页标记，当 has_more 为 true 时，会同时返回新的 page_token，否则不返回 page_token",
+              "required": false,
+              "example": "xxx"
             },
             "has_more": {
               "type": "boolean",
-              "description": "",
-              "required": false
+              "description": "是否还有更多项",
+              "required": false,
+              "example": true
             }
           },
           "scopes": [
@@ -6855,13 +7165,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "me"
             },
             "thread_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Mail thread ID. It can be obtained through the interface return value of sending mail, replying to mail, or getting mail details interface query"
+              "description": "Mail thread ID. It can be obtained through the interface return value of sending mail, replying to mail, or getting mail details interface query",
+              "example": "th_xxxxxxxxxxxx"
             }
           },
           "parameterOrder": [
@@ -6882,7 +7194,8 @@
             "add_folder": {
               "type": "string",
               "description": "Folder to be moved into. Supports INBOX, SENT, SPAM, ARCHIVED and custom folder IDs",
-              "required": false
+              "required": false,
+              "example": "INBOX"
             }
           },
           "scopes": [
@@ -6906,13 +7219,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user"
+              "description": "User email address. When accessing as a user, you can enter \"me\" to represent the current calling interface user",
+              "example": "me"
             },
             "thread_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Mail thread ID. It can be obtained through the interface return value of sending mail, replying to mail, or getting mail details interface query"
+              "description": "Mail thread ID. It can be obtained through the interface return value of sending mail, replying to mail, or getting mail details interface query",
+              "example": "th_xxxxxxxxxxxx"
             }
           },
           "parameterOrder": [

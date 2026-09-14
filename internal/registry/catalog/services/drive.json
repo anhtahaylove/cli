@@ -17,7 +17,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "File token that needs to be copied. Learn how to get the file token, see [File overview](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/file-overview)"
+              "description": "File token that needs to be copied.",
+              "example": "doccngpahSdXrFPIBD4XdIabcef"
             },
             "user_id_type": {
               "type": "string",
@@ -67,7 +68,7 @@
                 },
                 {
                   "value": "doc",
-                  "description": "Cloud document type of docs"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "sheet",
@@ -102,8 +103,9 @@
             },
             "folder_token": {
               "type": "string",
-              "description": "The target folder token to which the file is copied. Learn how to get the folder token, see [Folder overview](https://open.feishu.cn/document/ukTMukTMukTM/ugTNzUjL4UzM14CO1MTN/folder-overview)",
-              "required": true
+              "description": "The target folder token to which the file is copied.",
+              "required": true,
+              "example": "fldbcO1UuPz8VwnpPx5a92abcef"
             },
             "extra": {
               "type": "array",
@@ -134,29 +136,33 @@
               "properties": {
                 "token": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "文件标识符",
+                  "required": true,
+                  "example": "fldcnP8B5Fpr3UwVi24JykpuOic"
                 },
                 "name": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "文件名",
+                  "required": true,
+                  "example": "测试"
                 },
                 "type": {
                   "type": "string",
-                  "description": "",
+                  "description": "文件类型",
                   "required": true,
                   "example": "docx"
                 },
                 "parent_token": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "父文件夹标识",
+                  "required": false,
+                  "example": "fldcnP8B5Fpr3UwVi24JykpuOic"
                 },
                 "url": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "在浏览器中查看的链接",
+                  "required": false,
+                  "example": "https://sample.feishu.cn/drive/folder/fldcnExampleFolder"
                 },
                 "shortcut_info": {
                   "type": "object",
@@ -173,24 +179,28 @@
                     "target_token": {
                       "type": "string",
                       "description": "The original file token that the shortcut points to",
-                      "required": true
+                      "required": true,
+                      "example": "docxO1UuPz8VwnpPx5a9abcef"
                     }
                   }
                 },
                 "created_time": {
                   "type": "string",
                   "description": "File created time",
-                  "required": false
+                  "required": false,
+                  "example": "1686125119"
                 },
                 "modified_time": {
                   "type": "string",
                   "description": "File edited time",
-                  "required": false
+                  "required": false,
+                  "example": "1686125119"
                 },
                 "owner_id": {
                   "type": "string",
                   "description": "File owner",
                   "required": false,
+                  "example": "ou_b13d41c02edc52ce66aaae67bf1abcef",
                   "annotations": [
                     "open:x_user_id"
                   ]
@@ -224,20 +234,23 @@
             },
             "folder_token": {
               "type": "string",
-              "description": "Parent folder token. This parameter can be an empty string, which means the folder will be created in the root folder. You can refer to [List items in folder](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/list) to get other level folder. For details, see [Folder overview](https://open.feishu.cn/document/ukTMukTMukTM/ugTNzUjL4UzM14CO1MTN/folder-overview)",
-              "required": true
+              "description": "Parent folder token. This parameter can be an empty string, which means the folder will be created in the root folder. You can refer to List items in folder to get other level folder.",
+              "required": true,
+              "example": "fldbcO1UuPz8VwnpPx5a92abcef"
             }
           },
           "responseBody": {
             "token": {
               "type": "string",
               "description": "The token of the created folder",
-              "required": false
+              "required": false,
+              "example": "fldbcddUuPz8VwnpPx5oc2abcef"
             },
             "url": {
               "type": "string",
               "description": "The url of the created folder",
-              "required": false
+              "required": false,
+              "example": "https://sample.feishu.cn/drive/folder/example-created-folder"
             }
           },
           "scopes": [
@@ -262,27 +275,31 @@
               "type": "integer",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "指定每页显示的数据项的数量，默认值为100。若获取根目录下的清单，将返回全部数据",
+              "example": 50,
               "max": "200"
             },
             "page_token": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果",
+              "example": "MTY1NTA3MTA1OXw3MTA4NDc2MDc1NzkyOTI0Nabcef"
             },
             "folder_token": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Folder's token. (If this parameter is not provided or an empty string is provided, then return the list of the user's cloud space, and pagination and return shortcuts are not supported. )"
+              "description": "Folder's token. (If this parameter is not provided or an empty string is provided, then return the list of the user's cloud space, and pagination and return shortcuts are not supported. )",
+              "example": "fldbcRho46N6MQ3mJkOAuPabcef"
             },
             "order_by": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "定义清单中文件的排序方式",
               "default": "EditedTime",
+              "example": "EditedTime",
               "options": [
                 {
                   "value": "EditedTime",
@@ -302,8 +319,9 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "定义清单中文件的排序规则，与 order_by 配合使用",
               "default": "DESC",
+              "example": "DESC",
               "options": [
                 {
                   "value": "ASC",
@@ -323,7 +341,8 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "指定获取文件清单的特殊方式",
+              "example": "get_all_children_unsort"
             },
             "user_id_type": {
               "type": "string",
@@ -354,34 +373,38 @@
           "responseBody": {
             "files": {
               "type": "array",
-              "description": "List of folders",
+              "description": "List of files in the folder",
               "required": false,
               "properties": {
                 "token": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "文件标识符",
+                  "required": true,
+                  "example": "fldcnP8B5Fpr3UwVi24JykpuOic"
                 },
                 "name": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "文件名",
+                  "required": true,
+                  "example": "测试"
                 },
                 "type": {
                   "type": "string",
-                  "description": "",
+                  "description": "文件类型",
                   "required": true,
                   "example": "docx"
                 },
                 "parent_token": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "父文件夹标识",
+                  "required": false,
+                  "example": "fldcnP8B5Fpr3UwVi24JykpuOic"
                 },
                 "url": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "在浏览器中查看的链接",
+                  "required": false,
+                  "example": "https://sample.feishu.cn/drive/folder/fldcnExampleFolder"
                 },
                 "shortcut_info": {
                   "type": "object",
@@ -398,24 +421,28 @@
                     "target_token": {
                       "type": "string",
                       "description": "The original file token that the shortcut points to",
-                      "required": true
+                      "required": true,
+                      "example": "docxO1UuPz8VwnpPx5a9abcef"
                     }
                   }
                 },
                 "created_time": {
                   "type": "string",
                   "description": "File created time",
-                  "required": false
+                  "required": false,
+                  "example": "1686125119"
                 },
                 "modified_time": {
                   "type": "string",
                   "description": "File edited time",
-                  "required": false
+                  "required": false,
+                  "example": "1686125119"
                 },
                 "owner_id": {
                   "type": "string",
                   "description": "File owner",
                   "required": false,
+                  "example": "ou_b13d41c02edc52ce66aaae67bf1abcef",
                   "annotations": [
                     "open:x_user_id"
                   ]
@@ -425,12 +452,14 @@
             "next_page_token": {
               "type": "string",
               "description": "Paging tag, when has_more is true, the next_page_token of the next traversal will be returned at the same time, otherwise it will not be returned",
-              "required": false
+              "required": false,
+              "example": "MTY1NTA3MTA1OXw3MTA4NDc2MDc1NzkyOTI0Nabcef"
             },
             "has_more": {
               "type": "boolean",
-              "description": "",
-              "required": false
+              "description": "是否还有更多项",
+              "required": false,
+              "example": true
             }
           },
           "scopes": [
@@ -455,7 +484,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "需要修改标题的文件token"
+              "description": "需要修改标题的文件token",
+              "example": "fldbcO1UuPz8VwnpPx5a9abcef"
             },
             "type": {
               "type": "string",
@@ -553,7 +583,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Document token; You can directly obtain the document Token by accessing the URL bar of the browser where the document is located"
+              "description": "Document token; You can directly obtain the document Token by accessing the URL bar of the browser where the document is located",
+              "example": "doxbcdl03Vsxhm7Qmnj110abcef"
             },
             "file_type": {
               "type": "string",
@@ -564,7 +595,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc, deprecated"
                 },
                 {
                   "value": "docx",
@@ -572,7 +603,7 @@
                 },
                 {
                   "value": "sheet",
-                  "description": "Form"
+                  "description": "Spreadsheet"
                 },
                 {
                   "value": "file",
@@ -584,11 +615,11 @@
                 },
                 {
                   "value": "bitable",
-                  "description": ""
+                  "description": "多维表格"
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enum": [
@@ -634,7 +665,8 @@
             "comment_ids": {
               "type": "array",
               "description": "Comment ID list; You can call the interface for obtaining all comments in the cloud document to get the comment_id. The maximum number of elements allowed is 100",
-              "required": true
+              "required": true,
+              "example": "1654857036541825633"
             },
             "need_reaction": {
               "type": "boolean",
@@ -643,7 +675,7 @@
             },
             "need_relation": {
               "type": "boolean",
-              "description": "",
+              "description": "是否需要获取评论关系",
               "required": false
             }
           },
@@ -655,8 +687,9 @@
               "properties": {
                 "comment_id": {
                   "type": "string",
-                  "description": "",
+                  "description": "评论 ID",
                   "required": false,
+                  "example": "69161068xxxxx512356",
                   "annotations": [
                     "readOnly"
                   ]
@@ -665,29 +698,32 @@
                   "type": "string",
                   "description": "User ID",
                   "required": false,
+                  "example": "ou_cc19b2bfb93f8a44db4b4d6eababcef",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "create_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "创建时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "update_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "更新时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "is_solved": {
                   "type": "boolean",
-                  "description": "",
+                  "description": "是否已解决",
                   "required": false,
                   "annotations": [
                     "readOnly"
@@ -695,8 +731,9 @@
                 },
                 "solved_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "解决评论时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
@@ -712,7 +749,7 @@
                 },
                 "has_more": {
                   "type": "boolean",
-                  "description": "",
+                  "description": "是否有更多回复",
                   "required": false,
                   "annotations": [
                     "readOnly"
@@ -720,15 +757,16 @@
                 },
                 "page_token": {
                   "type": "string",
-                  "description": "",
+                  "description": "回复分页标记",
                   "required": false,
+                  "example": "6916106822734512356",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "is_whole": {
                   "type": "boolean",
-                  "description": "",
+                  "description": "是否是全文评论",
                   "required": false,
                   "annotations": [
                     "readOnly"
@@ -736,8 +774,9 @@
                 },
                 "quote": {
                   "type": "string",
-                  "description": "",
+                  "description": "局部评论的引用字段",
                   "required": false,
+                  "example": "hello",
                   "annotations": [
                     "readOnly"
                   ]
@@ -781,7 +820,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "文档 Token"
+              "description": "文档 Token",
+              "example": "TLLKdcpDro9ijQxA33ycNMabcef"
             }
           },
           "parameterOrder": [
@@ -803,12 +843,14 @@
                 "block_id": {
                   "type": "string",
                   "description": "文档块级元素的唯一标识,用于将评论锚定到指定的内容块。可通过「获取文档所有块」接口获取目标文档的块级元素ID",
-                  "required": true
+                  "required": true,
+                  "example": "block1234567890abcdef"
                 },
                 "parent_file_token": {
                   "type": "string",
                   "description": "父文件token，可选",
-                  "required": false
+                  "required": false,
+                  "example": "fldabc123xyz7sfjsfjh89"
                 },
                 "parent_file_type": {
                   "type": "string",
@@ -882,7 +924,8 @@
                 "mention_user": {
                   "type": "string",
                   "description": "被@用户的唯一标识。仅当 type 为 mention_user 时生效，可通过调用「获取用户信息」接口获取目标用户的 ID",
-                  "required": false
+                  "required": false,
+                  "example": "ou_1234567890abcdef1234567890abcdef"
                 },
                 "link": {
                   "type": "string",
@@ -895,14 +938,16 @@
             "extra": {
               "type": "string",
               "description": "额外信息",
-              "required": false
+              "required": false,
+              "example": "{\\\"refer_reply_id\\\":17785864760900000,\\\"ai_reply_source_type\\\":1}"
             }
           },
           "responseBody": {
             "comment_id": {
               "type": "string",
               "description": "新增评论的唯一标识，可用于后续的评论回复、删除等操作",
-              "required": false
+              "required": false,
+              "example": "comment-1234567890abcdef1234567890abcdef"
             },
             "created_at": {
               "type": "string",
@@ -913,7 +958,8 @@
             "idempotency_key": {
               "type": "string",
               "description": "返回请求中传入的幂等键，用于关联请求与响应结果",
-              "required": false
+              "required": false,
+              "example": "uuid-12345678-1234-5678-1234-567812345678"
             },
             "reply_id": {
               "type": "string",
@@ -944,7 +990,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the document. For the acquisition method, refer to [How to obtain the relevant token for cloud documents](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN#08bb5df6)"
+              "description": "Token of the document.",
+              "example": "doccnHh7U87HOFpii5u5Gabcef"
             },
             "file_type": {
               "type": "string",
@@ -955,7 +1002,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc, deprecated"
                 },
                 {
                   "value": "docx",
@@ -975,11 +1022,11 @@
                 },
                 {
                   "value": "bitable",
-                  "description": ""
+                  "description": "多维表格"
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enum": [
@@ -1010,13 +1057,14 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "6916106822734512356"
             },
             "page_size": {
               "type": "integer",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "分页大小，默认每页返回 50 个评论",
               "example": 10,
               "max": "100"
             },
@@ -1024,19 +1072,19 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户ID的类型",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -1055,7 +1103,7 @@
               "type": "boolean",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "是否需要评论关系"
             }
           },
           "parameterOrder": [
@@ -1064,14 +1112,15 @@
           "responseBody": {
             "has_more": {
               "type": "boolean",
-              "description": "",
+              "description": "是否还有更多项",
               "required": false,
               "example": false
             },
             "page_token": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "分页标记，当 has_more 为 true 时，会同时返回新的 page_token，否则不返回 page_token",
+              "required": false,
+              "example": "\"\""
             },
             "items": {
               "type": "array",
@@ -1080,8 +1129,9 @@
               "properties": {
                 "comment_id": {
                   "type": "string",
-                  "description": "",
+                  "description": "评论 ID",
                   "required": false,
+                  "example": "69161068xxxxx512356",
                   "annotations": [
                     "readOnly"
                   ]
@@ -1090,29 +1140,32 @@
                   "type": "string",
                   "description": "User ID",
                   "required": false,
+                  "example": "ou_cc19b2bfb93f8a44db4b4d6eababcef",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "create_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "创建时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "update_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "更新时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "is_solved": {
                   "type": "boolean",
-                  "description": "",
+                  "description": "是否已解决",
                   "required": false,
                   "annotations": [
                     "readOnly"
@@ -1120,8 +1173,9 @@
                 },
                 "solved_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "解决评论时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1137,7 +1191,7 @@
                 },
                 "has_more": {
                   "type": "boolean",
-                  "description": "",
+                  "description": "是否有更多回复",
                   "required": false,
                   "annotations": [
                     "readOnly"
@@ -1145,15 +1199,16 @@
                 },
                 "page_token": {
                   "type": "string",
-                  "description": "",
+                  "description": "回复分页标记",
                   "required": false,
+                  "example": "6916106822734512356",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "is_whole": {
                   "type": "boolean",
-                  "description": "",
+                  "description": "是否是全文评论",
                   "required": false,
                   "annotations": [
                     "readOnly"
@@ -1161,8 +1216,9 @@
                 },
                 "quote": {
                   "type": "string",
-                  "description": "",
+                  "description": "局部评论的引用字段",
                   "required": false,
+                  "example": "hello",
                   "annotations": [
                     "readOnly"
                   ]
@@ -1209,7 +1265,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the document"
+              "description": "Token of the document",
+              "example": "doccnGp4UK1UskrOEJwBXd3****"
             },
             "comment_id": {
               "type": "string",
@@ -1227,7 +1284,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc, deprecated"
                 },
                 {
                   "value": "docx",
@@ -1247,11 +1304,11 @@
                 },
                 {
                   "value": "bitable",
-                  "description": ""
+                  "description": "多维表格"
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enum": [
@@ -1316,13 +1373,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Document Token; You can directly obtain the document Token by accessing the URL bar of the browser where the document is located"
+              "description": "Document Token; You can directly obtain the document Token by accessing the URL bar of the browser where the document is located",
+              "example": "TLLKdcpDro9ijQxA33ycNMabcef"
             },
             "comment_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Comment ID; The comment ID is returned in interfaces such as \"add comment\" and \"get comments\""
+              "description": "Comment ID; The comment ID is returned in interfaces such as \"add comment\" and \"get comments\"",
+              "example": "69161068xxxxx512356"
             },
             "file_type": {
               "type": "string",
@@ -1349,15 +1408,15 @@
                 },
                 {
                   "value": "slides",
-                  "description": ""
+                  "description": "幻灯片"
                 },
                 {
                   "value": "bitable",
-                  "description": ""
+                  "description": "多维表格"
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enum": [
@@ -1414,20 +1473,21 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "",
+                      "description": "回复内容的元素类型",
                       "required": true,
+                      "example": "docs_link",
                       "options": [
                         {
                           "value": "text_run",
-                          "description": ""
+                          "description": "普通文本"
                         },
                         {
                           "value": "docs_link",
-                          "description": ""
+                          "description": "at 云文档链接"
                         },
                         {
                           "value": "person",
-                          "description": ""
+                          "description": "at 联系人"
                         }
                       ],
                       "enum": [
@@ -1438,13 +1498,13 @@
                     },
                     "text_run": {
                       "type": "object",
-                      "description": "",
+                      "description": "文本内容",
                       "required": false,
                       "ref": "text_run"
                     },
                     "docs_link": {
                       "type": "object",
-                      "description": "",
+                      "description": "云文档链接",
                       "required": false,
                       "ref": "docs_link"
                     },
@@ -1460,7 +1520,7 @@
             },
             "extra": {
               "type": "string",
-              "description": "",
+              "description": "额外信息",
               "required": false
             }
           },
@@ -1478,20 +1538,21 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "",
+                      "description": "回复内容的元素类型",
                       "required": true,
+                      "example": "docs_link",
                       "options": [
                         {
                           "value": "text_run",
-                          "description": ""
+                          "description": "普通文本"
                         },
                         {
                           "value": "docs_link",
-                          "description": ""
+                          "description": "at 云文档链接"
                         },
                         {
                           "value": "person",
-                          "description": ""
+                          "description": "at 联系人"
                         }
                       ],
                       "enum": [
@@ -1502,13 +1563,13 @@
                     },
                     "text_run": {
                       "type": "object",
-                      "description": "",
+                      "description": "文本内容",
                       "required": false,
                       "ref": "text_run"
                     },
                     "docs_link": {
                       "type": "object",
-                      "description": "",
+                      "description": "云文档链接",
                       "required": false,
                       "ref": "docs_link"
                     },
@@ -1526,6 +1587,7 @@
               "type": "string",
               "description": "Reply ID",
               "required": false,
+              "example": "6916106xxxxx4512356",
               "annotations": [
                 "readOnly"
               ]
@@ -1534,6 +1596,7 @@
               "type": "string",
               "description": "User ID",
               "required": false,
+              "example": "ou_cc19b2bfb93f8a44db4b4d6eab2abcef",
               "annotations": [
                 "readOnly"
               ]
@@ -1542,6 +1605,7 @@
               "type": "integer",
               "description": "Creation time(Unit: seconds)",
               "required": false,
+              "example": 1610281603,
               "annotations": [
                 "readOnly"
               ]
@@ -1550,6 +1614,7 @@
               "type": "integer",
               "description": "Last update(Unit: seconds)",
               "required": false,
+              "example": 1610281603,
               "annotations": [
                 "readOnly"
               ]
@@ -1578,12 +1643,14 @@
                 "reaction_key": {
                   "type": "string",
                   "description": "The unique identifier for emoji replies, used to distinguish between different types of comment emojis (such as thumbs up, applause, etc.)",
-                  "required": true
+                  "required": true,
+                  "example": "like"
                 },
                 "count": {
                   "type": "integer",
                   "description": "The cumulative usage count of this emoji reply is calculated based on the valid reply records of all users under the current comment",
                   "required": true,
+                  "example": 10,
                   "max": "500000",
                   "min": "0"
                 },
@@ -1622,7 +1689,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the document"
+              "description": "Token of the document",
+              "example": "doccnHh7U87HOFpii5u5G*****"
             },
             "comment_id": {
               "type": "string",
@@ -1647,7 +1715,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc, deprecated"
                 },
                 {
                   "value": "docx",
@@ -1667,11 +1735,11 @@
                 },
                 {
                   "value": "bitable",
-                  "description": ""
+                  "description": "多维表格"
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enum": [
@@ -1725,7 +1793,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Document Token; You can directly obtain the document Token by accessing the URL bar of the browser where the document is located"
+              "description": "Document Token; You can directly obtain the document Token by accessing the URL bar of the browser where the document is located",
+              "example": "doxbcdl03Vsxhm7Qmnj110Ygwwh"
             },
             "comment_id": {
               "type": "string",
@@ -1746,7 +1815,8 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "1654857036541812356"
             },
             "file_type": {
               "type": "string",
@@ -1757,7 +1827,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Documentation"
+                  "description": "Legacy doc, deprecated"
                 },
                 {
                   "value": "docx",
@@ -1765,7 +1835,7 @@
                 },
                 {
                   "value": "sheet",
-                  "description": "Form"
+                  "description": "Spreadsheet"
                 },
                 {
                   "value": "file",
@@ -1777,11 +1847,11 @@
                 },
                 {
                   "value": "bitable",
-                  "description": ""
+                  "description": "多维表格"
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enum": [
@@ -1798,7 +1868,7 @@
               "type": "boolean",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "是否需要获取评论卡片上挂载的Reaction数据，默认值为false"
             },
             "user_id_type": {
               "type": "string",
@@ -1851,8 +1921,9 @@
                 },
                 "reply_id": {
                   "type": "string",
-                  "description": "",
+                  "description": "回复 ID",
                   "required": false,
+                  "example": "6916106xxxxx4512356",
                   "annotations": [
                     "readOnly"
                   ]
@@ -1861,22 +1932,25 @@
                   "type": "string",
                   "description": "User ID",
                   "required": false,
+                  "example": "ou_cc19b2bfb93f8a44db4b4d6eab2abcef",
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "create_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "创建时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
                 },
                 "update_time": {
                   "type": "integer",
-                  "description": "",
+                  "description": "更新时间",
                   "required": false,
+                  "example": 1610281603,
                   "annotations": [
                     "readOnly"
                   ]
@@ -1899,18 +1973,20 @@
                 },
                 "reactions": {
                   "type": "array",
-                  "description": "",
+                  "description": "评论回复卡片上对应的表情回复信息",
                   "required": false,
                   "properties": {
                     "reaction_key": {
                       "type": "string",
                       "description": "The unique identifier for emoji replies, used to distinguish between different types of comment emojis (such as thumbs up, applause, etc.)",
-                      "required": true
+                      "required": true,
+                      "example": "like"
                     },
                     "count": {
                       "type": "integer",
                       "description": "The cumulative usage count of this emoji reply is calculated based on the valid reply records of all users under the current comment",
                       "required": true,
+                      "example": 10,
                       "max": "500000",
                       "min": "0"
                     },
@@ -1926,7 +2002,8 @@
             "page_token": {
               "type": "string",
               "description": "",
-              "required": false
+              "required": false,
+              "example": "6916106822734512356"
             },
             "has_more": {
               "type": "boolean",
@@ -1957,7 +2034,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the document"
+              "description": "Token of the document",
+              "example": "doccnHh7U87HOFpii5u5G*****"
             },
             "comment_id": {
               "type": "string",
@@ -1982,7 +2060,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc, deprecated"
                 },
                 {
                   "value": "docx",
@@ -2002,11 +2080,11 @@
                 },
                 {
                   "value": "bitable",
-                  "description": ""
+                  "description": "多维表格"
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enum": [
@@ -2064,20 +2142,21 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "",
+                      "description": "回复内容的元素类型",
                       "required": true,
+                      "example": "docs_link",
                       "options": [
                         {
                           "value": "text_run",
-                          "description": ""
+                          "description": "普通文本"
                         },
                         {
                           "value": "docs_link",
-                          "description": ""
+                          "description": "at 云文档链接"
                         },
                         {
                           "value": "person",
-                          "description": ""
+                          "description": "at 联系人"
                         }
                       ],
                       "enum": [
@@ -2088,19 +2167,19 @@
                     },
                     "text_run": {
                       "type": "object",
-                      "description": "",
+                      "description": "文本内容",
                       "required": false,
                       "ref": "text_run"
                     },
                     "docs_link": {
                       "type": "object",
-                      "description": "",
+                      "description": "云文档链接",
                       "required": false,
                       "ref": "docs_link"
                     },
                     "person": {
                       "type": "object",
-                      "description": "Text content",
+                      "description": "user_id of the user to add",
                       "required": false,
                       "ref": "person"
                     }
@@ -2148,17 +2227,19 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the file. For more information about how to obtain the token, see [How to get the token of docs resources](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN#036e0b0f)"
+              "description": "Token of the file.",
+              "example": "doccnBKgoMyY5OMbUG6Fioabcef"
             },
             "type": {
               "type": "string",
               "location": "query",
               "required": true,
               "description": "File type, which needs to match the token of the file",
+              "example": "docx",
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "sheet",
@@ -2194,7 +2275,7 @@
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enumName": "TokenType",
@@ -2216,6 +2297,7 @@
               "location": "query",
               "required": true,
               "description": "Permission to check",
+              "example": "view",
               "options": [
                 {
                   "value": "view",
@@ -2270,7 +2352,8 @@
             "auth_result": {
               "type": "boolean",
               "description": "Indicates whether the user has the specified permission",
-              "required": false
+              "required": false,
+              "example": true
             }
           },
           "scopes": [
@@ -2299,7 +2382,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the file. For more information about how to obtain the token, see [How to get the token of docs resources](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN#036e0b0f)"
+              "description": "Token of the file.",
+              "example": "doccnBKgoMyY5OMbUG6FioTXuBe"
             },
             "type": {
               "type": "string",
@@ -2310,7 +2394,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Documentation"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "sheet",
@@ -2334,7 +2418,7 @@
                 },
                 {
                   "value": "folder",
-                  "description": "Folders (not supported for `tenant_access_token`)"
+                  "description": "Folder. When called with tenant_access_token, the folder owner must be the app, or the app must have manage permission on the folder: add the app to a group as a bot, then grant that group manage permission"
                 },
                 {
                   "value": "mindnote",
@@ -2350,7 +2434,7 @@
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enumName": "TokenTypeV2",
@@ -2385,6 +2469,7 @@
               "type": "string",
               "description": "Collaborator type, which needs to match the collaborator id",
               "required": false,
+              "example": "openid",
               "options": [
                 {
                   "value": "email",
@@ -2416,11 +2501,11 @@
                 },
                 {
                   "value": "wikispaceid",
-                  "description": ""
+                  "description": "知识空间 ID"
                 },
                 {
                   "value": "appid",
-                  "description": ""
+                  "description": "应用 ID"
                 }
               ],
               "enum": [
@@ -2438,12 +2523,14 @@
             "member_id": {
               "type": "string",
               "description": "Collaborator ID, which needs to match the collaborator type",
-              "required": false
+              "required": false,
+              "example": "ou_67e5ecb64ce1c0bd94612c17999db411"
             },
             "perm": {
               "type": "string",
               "description": "Permission role of the collaborator",
               "required": false,
+              "example": "view",
               "options": [
                 {
                   "value": "view",
@@ -2466,16 +2553,17 @@
             },
             "perm_type": {
               "type": "string",
-              "description": "Collaborator's permission role type",
+              "description": "Collaborator's permission role type. This parameter takes effect when the document type is wiki, that is, a wiki node",
               "required": false,
+              "example": "container",
               "options": [
                 {
                   "value": "container",
-                  "description": ""
+                  "description": "当前页面及子页面"
                 },
                 {
                   "value": "single_page",
-                  "description": ""
+                  "description": "仅当前页面，当且仅当在知识库文档中该参数有效"
                 }
               ],
               "enum": [
@@ -2487,6 +2575,7 @@
               "type": "string",
               "description": "Type of collaborator; NOTE: This parameter is required when the `member_type` parameter is `wikispaceid`; Default value: \"\"",
               "required": false,
+              "example": "user",
               "options": [
                 {
                   "value": "user",
@@ -2506,15 +2595,15 @@
                 },
                 {
                   "value": "wiki_space_member",
-                  "description": ""
+                  "description": "知识库成员。在知识库启用了成员分组功能后不支持该参数"
                 },
                 {
                   "value": "wiki_space_viewer",
-                  "description": ""
+                  "description": "知识库可阅读成员。仅在知识库启用了成员分组功能后才支持该参数"
                 },
                 {
                   "value": "wiki_space_editor",
-                  "description": ""
+                  "description": "知识库可编辑成员。仅在知识库启用了成员分组功能后才支持该参数"
                 }
               ],
               "enum": [
@@ -2537,8 +2626,9 @@
               "properties": {
                 "member_type": {
                   "type": "string",
-                  "description": "",
+                  "description": "协作者ID类型",
                   "required": true,
+                  "example": "openid",
                   "options": [
                     {
                       "value": "email",
@@ -2570,11 +2660,11 @@
                     },
                     {
                       "value": "wikispaceid",
-                      "description": ""
+                      "description": "知识空间 ID"
                     },
                     {
                       "value": "appid",
-                      "description": ""
+                      "description": "应用 ID"
                     }
                   ],
                   "enum": [
@@ -2591,13 +2681,15 @@
                 },
                 "member_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "协作者ID，与协作者ID类型需要对应",
+                  "required": true,
+                  "example": "ou_67e5ecb64ce1c0bd94612c17999db411"
                 },
                 "perm": {
                   "type": "string",
                   "description": "Permission role of the collaborator",
                   "required": true,
+                  "example": "view",
                   "options": [
                     {
                       "value": "view",
@@ -2622,14 +2714,15 @@
                   "type": "string",
                   "description": "Collaborator's permission role type",
                   "required": false,
+                  "example": "container",
                   "options": [
                     {
                       "value": "container",
-                      "description": ""
+                      "description": "当前页面及子页面"
                     },
                     {
                       "value": "single_page",
-                      "description": ""
+                      "description": "仅当前页面，当且仅当在知识库文档中该参数有效"
                     }
                   ],
                   "enum": [
@@ -2639,8 +2732,9 @@
                 },
                 "type": {
                   "type": "string",
-                  "description": "",
+                  "description": "协作者类型",
                   "required": false,
+                  "example": "user",
                   "options": [
                     {
                       "value": "user",
@@ -2660,15 +2754,15 @@
                     },
                     {
                       "value": "wiki_space_member",
-                      "description": ""
+                      "description": "知识库成员。在知识库启用了成员分组功能后不支持该参数"
                     },
                     {
                       "value": "wiki_space_viewer",
-                      "description": ""
+                      "description": "知识库可阅读成员。仅在知识库启用了成员分组功能后才支持该参数"
                     },
                     {
                       "value": "wiki_space_editor",
-                      "description": ""
+                      "description": "知识库可编辑成员。仅在知识库启用了成员分组功能后才支持该参数"
                     }
                   ],
                   "enum": [
@@ -2712,17 +2806,19 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the file. For more information about how to obtain the token, see [How to get the token of docs resources](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN#036e0b0f)"
+              "description": "Token of the file.",
+              "example": "doccnBKgoMyY5OMbUG6FioTXuBe"
             },
             "type": {
               "type": "string",
               "location": "query",
               "required": true,
               "description": "File type, which needs to match the token of the file",
+              "example": "docx",
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "sheet",
@@ -2762,7 +2858,7 @@
                 },
                 {
                   "value": "apps",
-                  "description": ""
+                  "description": "妙搭应用"
                 }
               ],
               "enumName": "TokenType",
@@ -2784,15 +2880,17 @@
               "type": "boolean",
               "location": "query",
               "required": false,
-              "description": "If the value is true, the new owner is not notified. The default value is true",
-              "default": true
+              "description": "Whether to notify the new file owner (true = notify the new owner, false = do not notify). Only effective when called with user_access_token",
+              "default": true,
+              "example": true
             },
             "remove_old_owner": {
               "type": "boolean",
               "location": "query",
               "required": false,
               "description": "If the value is true, the permissions of the previous owner are deleted after the owner is transferred. The default value is false",
-              "default": false
+              "default": false,
+              "example": false
             },
             "stay_put": {
               "type": "boolean",
@@ -2807,7 +2905,8 @@
               "location": "query",
               "required": false,
               "description": "This parameter takes effect only when remove_old_owner = false, retaining the permissions role specified by the original file owner",
-              "default": "full_access"
+              "default": "full_access",
+              "example": "view"
             }
           },
           "parameterOrder": [
@@ -2882,18 +2981,19 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the file. For more information about how to obtain the token, see [How to get the token of docs resources](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN#036e0b0f)"
+              "description": "Token of the file.",
+              "example": "doccnBKgoMyY5OMbUG6FioTXuBe"
             },
             "type": {
               "type": "string",
               "location": "query",
               "required": true,
               "description": "File type, which needs to match the token of the file",
-              "example": "Doc",
+              "example": "docx",
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "sheet",
@@ -3104,7 +3204,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Token of the file. For more information about how to obtain the token, see [How to get the token of docs resources](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN#036e0b0f)"
+              "description": "Token of the file.",
+              "example": "doccnBKgoMyY5OMbUG6FioTXuBe"
             },
             "type": {
               "type": "string",
@@ -3115,7 +3216,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "sheet",
@@ -3170,7 +3271,7 @@
           "requestBody": {
             "external_access": {
               "type": "boolean",
-              "description": "Indicates whether sharing out of the tenant is allowed",
+              "description": "Indicates whether sharing out of the tenant is allowed. Not supported when the document type is wiki. Optional values: true (allowed), false (not allowed)",
               "required": false,
               "example": true
             },
@@ -3221,7 +3322,7 @@
             },
             "share_entity": {
               "type": "string",
-              "description": "Indicates who can add and manage collaborators",
+              "description": "Who can view, add and remove collaborators. Not supported when the document type is wiki",
               "required": false,
               "example": "anyone",
               "options": [
@@ -3281,7 +3382,7 @@
             },
             "invite_external": {
               "type": "boolean",
-              "description": "Specifies whether users without full access and non-owners are allowed to invite external participants",
+              "description": "Whether users without manage permission are allowed to share outside the organization. Not supported when the document type is wiki.;;Optional values:;- `true`: allowed;- `false`: not allowed",
               "required": false,
               "example": true
             }
@@ -3449,19 +3550,19 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户ID的类型",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -3479,8 +3580,9 @@
               "properties": {
                 "doc_token": {
                   "type": "string",
-                  "description": "Token of the file. For more information about how to obtain the token, see [File overview](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/file-overview)",
-                  "required": true
+                  "description": "Token of the file.",
+                  "required": true,
+                  "example": "doccnfYZzTlvXqZIGTdAHKabcef"
                 },
                 "doc_type": {
                   "type": "string",
@@ -3490,43 +3592,43 @@
                   "options": [
                     {
                       "value": "doc",
-                      "description": ""
+                      "description": "飞书文档"
                     },
                     {
                       "value": "sheet",
-                      "description": ""
+                      "description": "飞书电子表格"
                     },
                     {
                       "value": "bitable",
-                      "description": ""
+                      "description": "飞书多维表格"
                     },
                     {
                       "value": "mindnote",
-                      "description": ""
+                      "description": "飞书思维笔记"
                     },
                     {
                       "value": "file",
-                      "description": ""
+                      "description": "飞书文件"
                     },
                     {
                       "value": "wiki",
-                      "description": ""
+                      "description": "飞书wiki"
                     },
                     {
                       "value": "docx",
-                      "description": ""
+                      "description": "飞书新版文档"
                     },
                     {
                       "value": "folder",
-                      "description": ""
+                      "description": "飞书文件夹"
                     },
                     {
                       "value": "synced_block",
-                      "description": ""
+                      "description": "文档同步块"
                     },
                     {
                       "value": "slides",
-                      "description": ""
+                      "description": "文档幻灯片"
                     }
                   ],
                   "enum": [
@@ -3561,7 +3663,8 @@
                 "doc_token": {
                   "type": "string",
                   "description": "File token",
-                  "required": true
+                  "required": true,
+                  "example": "doccnfYZzTlvXqZIGTdAHKabcef"
                 },
                 "doc_type": {
                   "type": "string",
@@ -3579,6 +3682,7 @@
                   "type": "string",
                   "description": "File owner",
                   "required": true,
+                  "example": "ou_b13d41c02edc52ce66aaae67bf1abcef",
                   "annotations": [
                     "open:x_user_id"
                   ]
@@ -3593,6 +3697,7 @@
                   "type": "string",
                   "description": "Last editor",
                   "required": true,
+                  "example": "ou_b13d41c02edc52ce66aaae67bf1abcef",
                   "annotations": [
                     "open:x_user_id"
                   ]
@@ -3606,7 +3711,8 @@
                 "url": {
                   "type": "string",
                   "description": "File link",
-                  "required": true
+                  "required": true,
+                  "example": "https://sample.feishu.cn/docs/doccnfYZzTlvXqZIGTdAHKabcef"
                 },
                 "sec_label_name": {
                   "type": "string",
@@ -3619,14 +3725,15 @@
                 },
                 "request_doc_info": {
                   "type": "object",
-                  "description": "",
+                  "description": "用于回显入参(requst_doc_info中的字段信息即为为请求体中的request_docs字段信息)，如果入参中有相同token时无效",
                   "required": false,
                   "ref": "request_doc",
                   "properties": {
                     "doc_token": {
                       "type": "string",
-                      "description": "Token of the file. For more information about how to obtain the token, see [File overview](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/file-overview)",
-                      "required": true
+                      "description": "Token of the file.",
+                      "required": true,
+                      "example": "doccnfYZzTlvXqZIGTdAHKabcef"
                     },
                     "doc_type": {
                       "type": "string",
@@ -3636,43 +3743,43 @@
                       "options": [
                         {
                           "value": "doc",
-                          "description": ""
+                          "description": "飞书文档"
                         },
                         {
                           "value": "sheet",
-                          "description": ""
+                          "description": "飞书电子表格"
                         },
                         {
                           "value": "bitable",
-                          "description": ""
+                          "description": "飞书多维表格"
                         },
                         {
                           "value": "mindnote",
-                          "description": ""
+                          "description": "飞书思维笔记"
                         },
                         {
                           "value": "file",
-                          "description": ""
+                          "description": "飞书文件"
                         },
                         {
                           "value": "wiki",
-                          "description": ""
+                          "description": "飞书wiki"
                         },
                         {
                           "value": "docx",
-                          "description": ""
+                          "description": "飞书新版文档"
                         },
                         {
                           "value": "folder",
-                          "description": ""
+                          "description": "飞书文件夹"
                         },
                         {
                           "value": "synced_block",
-                          "description": ""
+                          "description": "文档同步块"
                         },
                         {
                           "value": "slides",
-                          "description": ""
+                          "description": "文档幻灯片"
                         }
                       ],
                       "enum": [
@@ -3701,7 +3808,8 @@
                 "token": {
                   "type": "string",
                   "description": "File Token",
-                  "required": true
+                  "required": true,
+                  "example": "boxcnrHpsg1QDqXAAAyachabcef"
                 },
                 "code": {
                   "type": "integer",
@@ -3757,7 +3865,8 @@
               "type": "string",
               "location": "query",
               "required": true,
-              "description": "Event type.; Route to the cloud document event list, currently only one type of event is supported.; Optional values:; drive.notice.comment_add_v1: Add Comment And Reply Notification Event"
+              "description": "Event type.; Route to the cloud document event list, currently only one type of event is supported.; Optional values:; drive.notice.comment_add_v1: Add Comment And Reply Notification Event",
+              "example": "drive.notice.comment_add_v1"
             }
           },
           "scopes": [
@@ -3780,7 +3889,8 @@
             "event_type": {
               "type": "string",
               "description": "Event type.; Route to the cloud document event list, currently only one type of event is supported.; Optional values:; drive.notice.comment_add_v1: Add Comment And Reply Notification Event",
-              "required": true
+              "required": true,
+              "example": "drive.notice.comment_add_v1"
             }
           },
           "scopes": [
@@ -3803,7 +3913,8 @@
               "type": "string",
               "location": "query",
               "required": true,
-              "description": "Event type.; Route to the cloud document event list, currently only one type of event is supported.; Optional values:; drive.notice.comment_add_v1: Add Comment And Reply Notification Event"
+              "description": "Event type.; Route to the cloud document event list, currently only one type of event is supported.; Optional values:; drive.notice.comment_add_v1: Add Comment And Reply Notification Event",
+              "example": "drive.notice.comment_add_v1"
             }
           },
           "responseBody": {
@@ -3838,7 +3949,8 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "File token. For details, see [File overview](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/file-overview)"
+              "description": "File token.",
+              "example": "doccnfYZzTlvXqZIGTdAHKabcef"
             },
             "file_type": {
               "type": "string",
@@ -3849,7 +3961,7 @@
               "options": [
                 {
                   "value": "doc",
-                  "description": "Docs"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "sheet",
@@ -3894,7 +4006,8 @@
             "file_token": {
               "type": "string",
               "description": "Document token",
-              "required": false
+              "required": false,
+              "example": "doccnfYZzTlvXqZIGTdAHKabcef"
             },
             "file_type": {
               "type": "string",
@@ -3935,17 +4048,20 @@
                 "uv_today": {
                   "type": "integer",
                   "description": "Number of visitors today",
-                  "required": false
+                  "required": false,
+                  "example": 1
                 },
                 "pv_today": {
                   "type": "integer",
-                  "description": "",
-                  "required": false
+                  "description": "今日新增文档访问次数",
+                  "required": false,
+                  "example": 1
                 },
                 "like_count_today": {
                   "type": "integer",
-                  "description": "",
-                  "required": false
+                  "description": "今日新增文档点赞数",
+                  "required": false,
+                  "example": 1
                 }
               }
             }
@@ -3976,13 +4092,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "File token. For how to get tokens, see [File overview](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file/file-overview)"
+              "description": "File token.",
+              "example": "XIHSdYSI7oMEU1xrsnxc8fabcef"
             },
             "page_size": {
               "type": "integer",
               "location": "query",
               "required": true,
-              "description": "",
+              "description": "分页大小",
+              "example": 10,
               "max": "50",
               "min": "1"
             },
@@ -3990,17 +4108,19 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": ""
+              "description": "分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果",
+              "example": "1674037112--7189934631754563585"
             },
             "file_type": {
               "type": "string",
               "location": "query",
               "required": true,
               "description": "File type",
+              "example": "docx",
               "options": [
                 {
                   "value": "doc",
-                  "description": "Doc"
+                  "description": "Legacy doc"
                 },
                 {
                   "value": "docx",
@@ -4041,20 +4161,21 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Type of viewer ID used in this call; When the value is `user_id`, the following field scopes are required：;<md-perm name=\"contact:user.employee_id:readonly\" desc=\"Obtain user ID\" support_app_types=\"custom\" tags=\"\">Obtain user ID</md-perm>",
+              "description": "Type of viewer ID used in this call; When the value is `user_id`, the following field scopes are required：;Obtain user ID",
               "default": "open_id",
+              "example": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": "Identifies a user to a tenant. The same user has different User IDs in different tenants. In one single tenant, a user has the same User ID in all apps （including store apps）. User ID is usually used to communicate user data between different apps.[How to get User ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-user-id)"
+                  "description": "Identifies a user to a tenant. The same user has different User IDs in different tenants. In one single tenant, a user has the same User ID in all apps （including store apps）. User ID is usually used to communicate user data between different apps."
                 },
                 {
                   "value": "union_id",
-                  "description": "Identifies a user to a tenant that acts as a developer. A user has the same Union ID in apps developed by the same developer, and has different Union IDs in apps developed by different developers. A developer can use Union ID to link the same user's identities in multiple apps.[How to get Union ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-union-id)"
+                  "description": "Identifies a user to a tenant that acts as a developer. A user has the same Union ID in apps developed by the same developer, and has different Union IDs in apps developed by different developers. A developer can use Union ID to link the same user's identities in multiple apps."
                 },
                 {
                   "value": "open_id",
-                  "description": "Identifies a user to an app. The same user has different Open IDs in different apps.[How to get Open ID](https://open.feishu.cn/document/uAjLw4CM/ugTN1YjL4UTN24CO1UjN/trouble-shooting/how-to-obtain-openid)"
+                  "description": "Identifies a user to an app. The same user has different Open IDs in different apps."
                 }
               ],
               "enum": [
@@ -4077,6 +4198,7 @@
                   "type": "string",
                   "description": "Visitor ID",
                   "required": false,
+                  "example": "ou_cc19b2bfb93f8a44db4b4d6eababcef",
                   "annotations": [
                     "open:x_user_id"
                   ]
@@ -4084,29 +4206,34 @@
                 "name": {
                   "type": "string",
                   "description": "Visitor name",
-                  "required": false
+                  "required": false,
+                  "example": "zhangsan"
                 },
                 "avatar_url": {
                   "type": "string",
                   "description": "Visitor profile photo URL",
-                  "required": false
+                  "required": false,
+                  "example": "https://foo.icon.com/xxxx"
                 },
                 "last_view_time": {
                   "type": "string",
                   "description": "Latest access time, in seconds timestamp",
-                  "required": false
+                  "required": false,
+                  "example": "1679284285"
                 }
               }
             },
             "page_token": {
               "type": "string",
-              "description": "",
-              "required": false
+              "description": "分页标记，当 has_more 为 true 时，会同时返回新的 page_token，否则不返回 page_token",
+              "required": false,
+              "example": "1674037112--7189934631754563585"
             },
             "has_more": {
               "type": "boolean",
-              "description": "",
-              "required": false
+              "description": "是否还有更多项",
+              "required": false,
+              "example": true
             }
           },
           "scopes": [
@@ -4134,13 +4261,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "The unique identifier token of the file, used to locate the target file. It can be obtained by calling the \"Get File Metadata\" or \"File Upload\" API"
+              "description": "The unique identifier token of the file, used to locate the target file. It can be obtained by calling the \"Get File Metadata\" or \"File Upload\" API",
+              "example": "ppHV2Xepq2BQk3K79FTB"
             },
             "file_type": {
               "type": "string",
               "location": "query",
               "required": true,
-              "description": "File type, used to distinguish different types of cloud documents. For optional values, refer to the [Enumeration of File Types in The Open Platform](https://open.feishu.cn/document/ukTMukTMukTM/uczNzUjL3czM14yN3MTN)"
+              "description": "File type, used to distinguish different types of cloud documents.",
+              "example": "docx"
             }
           },
           "parameterOrder": [
@@ -4221,23 +4350,27 @@
               "properties": {
                 "name": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "业务名称，ccm代表云文档容量，vc代表视频会议，mail代表邮箱，im代表聊天文件",
+                  "required": false,
+                  "example": "ccm"
                 },
                 "used": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "业务已经使用的容量，单位byte，最大可能为int64，需要自己转换为数字",
+                  "required": false,
+                  "example": "345567888"
                 },
                 "quota": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "额度，单位byte，最大可能为int64，需要自己转换为数字",
+                  "required": false,
+                  "example": "23455666"
                 },
                 "unlimited": {
                   "type": "boolean",
-                  "description": "",
-                  "required": false
+                  "description": "是否没设置容量限制",
+                  "required": false,
+                  "example": true
                 }
               }
             },

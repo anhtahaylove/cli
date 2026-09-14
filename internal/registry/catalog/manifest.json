@@ -4,107 +4,107 @@
     {
       "name": "approval",
       "file": "services/approval.json",
-      "revision": 2,
-      "size": 72666,
-      "sha256": "f37218632195e8b872526e40049b5a6e132da6ab7120a9032e8971e776f34652"
+      "revision": 13,
+      "size": 80775,
+      "sha256": "500958af9733907fe9a494727a6a7f4a7680509b2ed6bb0dbad474be0ebcd47d"
     },
     {
       "name": "attendance",
       "file": "services/attendance.json",
-      "revision": 2,
-      "size": 15886,
-      "sha256": "b781ef394b14b59a53c3abc88f26a44dfffd48ff4d84dc2011f953fd5e3d2c14"
+      "revision": 6,
+      "size": 16317,
+      "sha256": "7d31a039093f61dfe2a3d823a4bb64ff703411e5b7f9093720ddcb9418355aeb"
     },
     {
       "name": "calendar",
       "file": "services/calendar.json",
-      "revision": 2,
-      "size": 253554,
-      "sha256": "49ace10c1536416cb9f27ba8ef06fc6e151de906badd5eb46633c7fbc2bcca1f"
+      "revision": 16,
+      "size": 291231,
+      "sha256": "4f85a24ce7ba665a9f343f89f08263e91d6d3db1ed8ce9bb54a55486d6ae992a"
     },
     {
       "name": "contact",
       "file": "services/contact.json",
-      "revision": 2,
-      "size": 6273,
-      "sha256": "960ce8def1c3c6065e8b29ca46912cb3ac2264dfc4387df6aa274548905e7b10"
+      "revision": 5,
+      "size": 6326,
+      "sha256": "59ffac2032574d9d148dc5d010f3c3d30c524954f983c0d35e4930cacf4abb3f"
     },
     {
       "name": "drive",
       "file": "services/drive.json",
-      "revision": 3,
-      "size": 150240,
-      "sha256": "cff98ebe324ede15af499a2e1cdf820ef3f89cd578ad314f7f0fefdfc64eba0f"
+      "revision": 13,
+      "size": 158876,
+      "sha256": "f1d489d0b56de2bc413164cbbc1d57a212251c81e247d980cefbedf0b4b3e6db"
     },
     {
       "name": "im",
       "file": "services/im.json",
-      "revision": 4,
-      "size": 223704,
-      "sha256": "ae6afcce816052ae9b234f6b17fa10319670dce4308319d8ee4a476bfb1d63cc"
+      "revision": 17,
+      "size": 257232,
+      "sha256": "12521681648bcb850dc0570ba229404d5420a7ee4cb55a14f253162968aa465a"
     },
     {
       "name": "mail",
       "file": "services/mail.json",
-      "revision": 2,
-      "size": 260082,
-      "sha256": "025c119ea6b97f56824fa595b76a65d0802113a354e36454fd57660729d4254d"
+      "revision": 12,
+      "size": 281379,
+      "sha256": "37ce2ce8698843422f753eb9ba99909c2be691122dd6a520c66d760c882234a0"
     },
     {
       "name": "mindnotes",
       "file": "services/mindnotes.json",
-      "revision": 2,
-      "size": 20080,
-      "sha256": "b99517a8748d6e3d577ae23cdb7aa23615f99d09eaadb9ecf37f5eef9d795a4c"
+      "revision": 5,
+      "size": 20438,
+      "sha256": "7fe61d43cda18dbf094dad38e6f064448c4e089d7c4886320ee3a3473cdbd39b"
     },
     {
       "name": "minutes",
       "file": "services/minutes.json",
-      "revision": 2,
-      "size": 3952,
-      "sha256": "ccc94c9e57e9c55b4c445f030b180127f3364a78efec571a8c9bf8221826d34b"
+      "revision": 8,
+      "size": 4618,
+      "sha256": "77651aaedda35a4ee3cb85cdf0f55b3a414f7e7f8b7d01f39bd6f64d6515650d"
     },
     {
       "name": "okr",
       "file": "services/okr.json",
-      "revision": 2,
-      "size": 159458,
-      "sha256": "a4a5bb318cf0a47cc4e4b7b0afd7a61cc4af13b7db9f6c3ff4ee45dca73fdb4c"
+      "revision": 9,
+      "size": 165939,
+      "sha256": "caa52b8db8fda1ade1a9ebca8b13796bbb7bbf70907a7d4873a728fc2e939849"
     },
     {
       "name": "sheets",
       "file": "services/sheets.json",
-      "revision": 2,
-      "size": 22176,
-      "sha256": "06b7ed7b5be3cd7fbece6d18bc678a91538679e6e57212182a1560ff95c96e8f"
+      "revision": 11,
+      "size": 24337,
+      "sha256": "24f9dbc4d65d65c6d060d32155b83e0d1033990f08a1064e77fdace810ed093b"
     },
     {
       "name": "slides",
       "file": "services/slides.json",
-      "revision": 2,
-      "size": 32979,
-      "sha256": "00915200b72f5e78dcce7ea6240addcb02cf08d520a102db58d4ad60ab4bde3f"
+      "revision": 7,
+      "size": 33691,
+      "sha256": "fb56b739a53715a2317e596cf69a77f9cc7e82019f1e39da6aea50c33698fb32"
     },
     {
       "name": "task",
       "file": "services/task.json",
-      "revision": 2,
-      "size": 388970,
-      "sha256": "93d7d1edc3046187614be18f813bb37aa51a67f5685ddd7bbe14ad21b0f98d76"
+      "revision": 15,
+      "size": 455002,
+      "sha256": "8a67a1c1819e51c9c335ebcf0c8399563b3f1465f96093bb0294e559744ae28e"
     },
     {
       "name": "vc",
       "file": "services/vc.json",
-      "revision": 2,
-      "size": 14150,
-      "sha256": "fdb2f63eda5d9112e84a54998c0befb3494a078179ed4c197463446c4d7eee23"
+      "revision": 11,
+      "size": 17503,
+      "sha256": "a66869ea4c85f85bf8943299416cead1e4c1a279efe4e15bbfb440b1f619a02b"
     },
     {
       "name": "wiki",
       "file": "services/wiki.json",
-      "revision": 2,
-      "size": 64778,
-      "sha256": "0c3f36e82468603134558db241fec42cca4e073980cdd2f93aacfe3483ddd90f"
+      "revision": 14,
+      "size": 72938,
+      "sha256": "539fdaade66ec615a2efd52beb3dfa77c850234a191cb02b12c51dc0651b6b14"
     }
   ]
 }

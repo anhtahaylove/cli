@@ -60,20 +60,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -118,7 +118,8 @@
                 "id": {
                   "type": "string",
                   "description": "Alignment ID",
-                  "required": true
+                  "required": true,
+                  "example": "1"
                 },
                 "create_time": {
                   "type": "string",
@@ -157,6 +158,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -166,7 +168,7 @@
                 },
                 "to_owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner being aligned to",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -189,6 +191,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -200,35 +203,36 @@
                   "type": "integer",
                   "description": "Entity type that initiated the alignment",
                   "required": true,
-                  "example": "2",
+                  "example": 2,
                   "options": [
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Objective"
                     }
                   ],
                   "enum": [
-                    "2"
+                    2
                   ]
                 },
                 "from_entity_id": {
                   "type": "string",
                   "description": "Entity ID that initiated the alignment",
-                  "required": true
+                  "required": true,
+                  "example": "1"
                 },
                 "to_entity_type": {
                   "type": "integer",
                   "description": "Entity type being aligned to",
                   "required": true,
-                  "example": "2",
+                  "example": 2,
                   "options": [
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Objective"
                     }
                   ],
                   "enum": [
-                    "2"
+                    2
                   ]
                 },
                 "to_entity_id": {
@@ -265,8 +269,8 @@
               "location": "query",
               "required": false,
               "description": "Page size, maximum 100",
-              "default": "10",
-              "example": "10",
+              "default": 10,
+              "example": 10,
               "max": "100",
               "min": "1"
             },
@@ -274,7 +278,8 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "owner_type": {
               "type": "string",
@@ -302,14 +307,15 @@
           "responseBody": {
             "has_more": {
               "type": "boolean",
-              "description": "Whether the response body has more parameters",
+              "description": "Whether there is a next page",
               "required": false,
-              "example": "true"
+              "example": true
             },
             "page_token": {
               "type": "string",
               "description": "Page identifier, when has_more is true, a new page_token will also be returned. Otherwise, page_token will not be returned",
-              "required": false
+              "required": false,
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "items": {
               "type": "array",
@@ -358,7 +364,7 @@
                   "type": "boolean",
                   "description": "Enabled",
                   "required": true,
-                  "example": "true"
+                  "example": true
                 },
                 "color": {
                   "type": "string",
@@ -453,26 +459,27 @@
               "type": "string",
               "location": "query",
               "required": true,
-              "description": "User ID. The ID type must match the value of the user_id_type parameter"
+              "description": "User ID. The ID type must match the value of the user_id_type parameter",
+              "example": "ou_3bbe8a09c20e89cce9bff989ed840674"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -486,8 +493,8 @@
               "location": "query",
               "required": false,
               "description": "Page size, maximum 100",
-              "default": "10",
-              "example": "10",
+              "default": 10,
+              "example": 10,
               "max": "100",
               "min": "1"
             },
@@ -495,15 +502,16 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             }
           },
           "responseBody": {
             "has_more": {
               "type": "boolean",
-              "description": "Whether the response body has more parameters",
+              "description": "Whether there is a next page",
               "required": false,
-              "example": "true"
+              "example": true
             },
             "page_token": {
               "type": "string",
@@ -542,7 +550,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -565,6 +573,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -588,37 +597,37 @@
                   "type": "integer",
                   "description": "User cycle status",
                   "required": false,
-                  "example": "1",
+                  "example": 1,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Default"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Normal"
                     },
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Invalid"
                     },
                     {
-                      "value": "3",
+                      "value": 3,
                       "description": "Hidden"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1",
-                    "2",
-                    "3"
+                    0,
+                    1,
+                    2,
+                    3
                   ]
                 },
                 "score": {
                   "type": "number",
                   "description": "User cycle score: [0,1], supports one decimal place",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 }
@@ -639,33 +648,33 @@
           "id": "cycles.objectives_position",
           "path": "cycles/{cycle_id}/objectives_position",
           "httpMethod": "PUT",
-          "description": "Modify Objective positions in OKR Cycle",
+          "description": "Update the positions of all Objectives in a user's OKR cycle",
           "parameters": {
             "cycle_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User cycle ID. The ID type must match the user_id_type or department_id_type parameter value. How to get: Call the \"Get user OKR Cycle list\" API",
+              "description": "User OKR cycle ID. How to obtain: call the \"Get user OKR cycle list\" API",
               "example": "7342342398472398473"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -715,24 +724,25 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的 ID",
+                  "required": true,
+                  "example": "7342342398472398473"
                 },
                 "create_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的创建时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "update_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的更新时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -755,6 +765,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -764,56 +775,57 @@
                 },
                 "cycle_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的用户周期 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "目标的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "score": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的分数：[0,1]，支持一位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "notes": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的备注",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "weight": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的权重：[0,1]，支持三位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -825,8 +837,9 @@
                 },
                 "category_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "目标的分类 ID",
+                  "required": false,
+                  "example": "1"
                 }
               }
             }
@@ -846,33 +859,33 @@
           "id": "cycles.objectives_weight",
           "path": "cycles/{cycle_id}/objectives_weight",
           "httpMethod": "PUT",
-          "description": "Modify Objective weights in OKR Cycle",
+          "description": "Update the weights of all Objectives in a user's OKR cycle",
           "parameters": {
             "cycle_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User cycle ID. The ID type must match the value of the user_id_type parameter. How to obtain: Call the \"Get user OKR cycle list\" API",
+              "description": "User OKR cycle ID. How to obtain: call the \"Get user OKR cycle list\" API",
               "example": "7342342398472398473"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -923,7 +936,7 @@
                   "type": "number",
                   "description": "Objective weight: [0,1], supports three decimal places",
                   "required": true,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 }
@@ -938,24 +951,25 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的 ID",
+                  "required": true,
+                  "example": "7342342398472398473"
                 },
                 "create_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的创建时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "update_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的更新时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -978,6 +992,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -987,56 +1002,57 @@
                 },
                 "cycle_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的用户周期 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "目标的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "score": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的分数：[0,1]，支持一位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "notes": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的备注",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "weight": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的权重：[0,1]，支持三位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -1048,8 +1064,9 @@
                 },
                 "category_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "目标的分类 ID",
+                  "required": false,
+                  "example": "1"
                 }
               }
             }
@@ -1079,27 +1096,27 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "User cycle ID. The ID type must match the user_id_type or department_id_type parameter value. How to get: Call the \"Get user OKR Cycle list\" API",
+              "description": "User OKR cycle ID. How to obtain: call the \"Get user OKR cycle list\" API",
               "example": "7342342398472398473"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -1143,7 +1160,7 @@
               "properties": {
                 "blocks": {
                   "type": "array",
-                  "description": "",
+                  "description": "文档结构是按行排列的，每行内容是一个 Block",
                   "required": false,
                   "properties": {
                     "block_element_type": {
@@ -1190,7 +1207,7 @@
               "properties": {
                 "blocks": {
                   "type": "array",
-                  "description": "",
+                  "description": "文档结构是按行排列的，每行内容是一个 Block",
                   "required": false,
                   "properties": {
                     "block_element_type": {
@@ -1239,7 +1256,7 @@
               "type": "number",
               "description": "Objective weight: [0,1], supports three decimal places",
               "required": false,
-              "example": "0.5",
+              "example": 0.5,
               "max": "1",
               "min": "0"
             },
@@ -1253,7 +1270,7 @@
               "type": "number",
               "description": "Objective score: [0,1], supports one decimal place",
               "required": false,
-              "example": "0.5",
+              "example": 0.5,
               "max": "1",
               "min": "0"
             }
@@ -1287,15 +1304,15 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Identify department by department_id. The ID type must match the value of the department_id_type parameter"
+              "description": "User OKR cycle ID. How to obtain: call the \"Get user OKR cycle list\" API",
+              "example": "1"
             },
             "page_size": {
               "type": "integer",
               "location": "query",
               "required": false,
-              "description": "User cycle ID. Obtain by calling the \"Get user OKR Cycle list\" API. The ID type must match the value of the user_id_type parameter",
-              "default": "10",
-              "example": "7342342398472398471",
+              "description": "Page size, maximum 100",
+              "default": 10,
               "max": "100",
               "min": "1"
             },
@@ -1303,26 +1320,27 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -1335,17 +1353,16 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page size, maximum 100",
+              "description": "Department ID type used in this call",
               "default": "open_department_id",
-              "example": "10",
               "options": [
                 {
                   "value": "department_id",
-                  "description": "Page token. Leave empty for the first request to start from the beginning. When there are more items, a new page_token will be returned. Use this page_token for the next request to get more results."
+                  "description": "use department_id for department"
                 },
                 {
                   "value": "open_department_id",
-                  "description": "Department ID type used in this call"
+                  "description": "use open_department_id for department"
                 }
               ],
               "enum": [
@@ -1360,40 +1377,42 @@
           "responseBody": {
             "has_more": {
               "type": "boolean",
-              "description": "Whether the response body has more parameters",
+              "description": "Whether there is a next page",
               "required": false,
-              "example": "true"
+              "example": true
             },
             "page_token": {
               "type": "string",
               "description": "Page identifier, when has_more is true, a new page_token will also be returned. Otherwise, page_token will not be returned",
-              "required": false
+              "required": false,
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "items": {
               "type": "array",
-              "description": "Error code, non-zero means failure",
+              "description": "Objective list",
               "required": false,
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的 ID",
+                  "required": true,
+                  "example": "7342342398472398473"
                 },
                 "create_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的创建时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "update_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的更新时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -1416,6 +1435,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -1425,56 +1445,57 @@
                 },
                 "cycle_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的用户周期 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "目标的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "score": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的分数：[0,1]，支持一位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "notes": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的备注",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "weight": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的权重：[0,1]，支持三位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -1486,8 +1507,9 @@
                 },
                 "category_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "目标的分类 ID",
+                  "required": false,
+                  "example": "1"
                 }
               }
             }
@@ -1523,20 +1545,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -1576,57 +1598,57 @@
               "type": "integer",
               "description": "Indicator current value calculation method. Objective only supports 0, 1; Key Result only supports 0, 2",
               "required": false,
-              "example": "0",
+              "example": 0,
               "options": [
                 {
-                  "value": "0",
+                  "value": 0,
                   "description": "Manual update"
                 },
                 {
-                  "value": "1",
+                  "value": 1,
                   "description": "Auto update based on Key Result progress"
                 },
                 {
-                  "value": "2",
+                  "value": 2,
                   "description": "Updated based on decomposed Key Result progress"
                 }
               ],
               "enum": [
-                "0",
-                "1",
-                "2"
+                0,
+                1,
+                2
               ]
             },
             "status_calculate_type": {
               "type": "integer",
               "description": "Indicator status calculation method. Objective only supports 0, 1, 2; Key Result only supports 0, 1",
               "required": false,
-              "example": "0",
+              "example": 0,
               "options": [
                 {
-                  "value": "0",
+                  "value": 0,
                   "description": "Manual update"
                 },
                 {
-                  "value": "1",
+                  "value": 1,
                   "description": "Auto update based on progress and current time"
                 },
                 {
-                  "value": "2",
+                  "value": 2,
                   "description": "Updated based on highest risk Key Result status"
                 }
               ],
               "enum": [
-                "0",
-                "1",
-                "2"
+                0,
+                1,
+                2
               ]
             },
             "start_value": {
               "type": "number",
               "description": "Indicator start value. Not supported for Objective modification",
               "required": false,
-              "example": "0",
+              "example": 0.0,
               "max": "99999999999",
               "min": "-99999999999"
             },
@@ -1634,7 +1656,7 @@
               "type": "number",
               "description": "Indicator target value. Not supported for Objective modification; not supported for Key Result modification with carry-over records",
               "required": false,
-              "example": "0",
+              "example": 0.0,
               "max": "99999999999",
               "min": "-99999999999"
             },
@@ -1642,7 +1664,7 @@
               "type": "number",
               "description": "Indicator current value. Not supported for Objective modification with Auto update based on Key Result progress; not supported for Key Result modification with Auto update based on decomposed records",
               "required": false,
-              "example": "0",
+              "example": 0.0,
               "max": "99999999999",
               "min": "-99999999999"
             },
@@ -1656,20 +1678,20 @@
                   "type": "integer",
                   "description": "Indicator unit type",
                   "required": true,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Public"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Custom"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1"
+                    0,
+                    1
                   ]
                 },
                 "unit_value": {
@@ -1684,30 +1706,30 @@
               "type": "integer",
               "description": "Indicator status. Only modifiable when Indicator status calculation method is Manual update",
               "required": false,
-              "example": "0",
+              "example": 0,
               "options": [
                 {
-                  "value": "-1",
+                  "value": -1,
                   "description": "Undefined"
                 },
                 {
-                  "value": "0",
+                  "value": 0,
                   "description": "Normal"
                 },
                 {
-                  "value": "1",
+                  "value": 1,
                   "description": "At risk"
                 },
                 {
-                  "value": "2",
+                  "value": 2,
                   "description": "Delayed"
                 }
               ],
               "enum": [
-                "-1",
-                "0",
-                "1",
-                "2"
+                -1,
+                0,
+                1,
+                2
               ]
             }
           },
@@ -1738,7 +1760,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -1761,6 +1783,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -1772,20 +1795,20 @@
                   "type": "integer",
                   "description": "Entity type that the indicator belongs to",
                   "required": true,
-                  "example": "2",
+                  "example": 2,
                   "options": [
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Objective"
                     },
                     {
-                      "value": "3",
+                      "value": 3,
                       "description": "Key Result"
                     }
                   ],
                   "enum": [
-                    "2",
-                    "3"
+                    2,
+                    3
                   ]
                 },
                 "entity_id": {
@@ -1798,62 +1821,62 @@
                   "type": "integer",
                   "description": "Indicator status",
                   "required": true,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "-1",
+                      "value": -1,
                       "description": "Undefined"
                     },
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Normal"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "At risk"
                     },
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Delayed"
                     }
                   ],
                   "enum": [
-                    "-1",
-                    "0",
-                    "1",
-                    "2"
+                    -1,
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "status_calculate_type": {
                   "type": "integer",
                   "description": "Indicator status calculation method",
                   "required": true,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Manual update"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Auto update based on progress and current time"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "基于风险最高的关键结果状态更新"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1",
-                    "2"
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "start_value": {
                   "type": "number",
                   "description": "Indicator start value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -1861,7 +1884,7 @@
                   "type": "number",
                   "description": "Indicator target value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -1869,7 +1892,7 @@
                   "type": "number",
                   "description": "Indicator current value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -1877,30 +1900,30 @@
                   "type": "integer",
                   "description": "Indicator current value calculation method",
                   "required": false,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Manual update"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Auto update based on Key Result progress"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "基于拆解的关键结果进度更新"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1",
-                    "2"
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "unit": {
                   "type": "object",
-                  "description": "Indicator unit. Not supported for Objective modification; not supported for Key Result modification with carry-over records",
+                  "description": "Indicator unit",
                   "required": false,
                   "ref": "indicator_unit",
                   "properties": {
@@ -1908,20 +1931,20 @@
                       "type": "integer",
                       "description": "Indicator unit type",
                       "required": true,
-                      "example": "0",
+                      "example": 0,
                       "options": [
                         {
-                          "value": "0",
+                          "value": 0,
                           "description": "Public"
                         },
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Custom"
                         }
                       ],
                       "enum": [
-                        "0",
-                        "1"
+                        0,
+                        1
                       ]
                     },
                     "unit_value": {
@@ -1960,7 +1983,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Key Result ID. The ID type must match the user_id_type or department_id_type parameter value. How to get: Call the \"Get Key Results of an Objective\" API",
+              "description": "Key Result ID. How to get: call the \"Get Key Results of an Objective\" API",
               "example": "7342342398472398473"
             }
           },
@@ -2003,20 +2026,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -2078,7 +2101,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -2101,6 +2124,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -2110,26 +2134,27 @@
                 },
                 "objective_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "关键结果的目标 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "关键结果的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "关键结果的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
@@ -2138,7 +2163,7 @@
                   "type": "number",
                   "description": "Key Result score: [0,1], supports one decimal place",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -2146,13 +2171,13 @@
                   "type": "number",
                   "description": "Objective weight: [0,1], supports three decimal places",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "deadline": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的截止时间，时间戳",
                   "required": false,
                   "example": "1760604634563"
                 }
@@ -2186,20 +2211,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -2243,7 +2268,7 @@
               "properties": {
                 "blocks": {
                   "type": "array",
-                  "description": "",
+                  "description": "文档结构是按行排列的，每行内容是一个 Block",
                   "required": false,
                   "properties": {
                     "block_element_type": {
@@ -2286,7 +2311,7 @@
               "type": "number",
               "description": "Key Result score: [0,1], supports one decimal place",
               "required": false,
-              "example": "0.5",
+              "example": 0.5,
               "max": "1",
               "min": "0"
             },
@@ -2324,7 +2349,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -2347,6 +2372,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -2356,26 +2382,27 @@
                 },
                 "objective_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "关键结果的目标 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "关键结果的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "关键结果的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
@@ -2384,7 +2411,7 @@
                   "type": "number",
                   "description": "Key Result score: [0,1], supports one decimal place",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -2392,13 +2419,13 @@
                   "type": "number",
                   "description": "Objective weight: [0,1], supports three decimal places",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "deadline": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的截止时间，时间戳",
                   "required": false,
                   "example": "1760604634563"
                 }
@@ -2437,20 +2464,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -2512,7 +2539,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -2535,6 +2562,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -2546,20 +2574,20 @@
                   "type": "integer",
                   "description": "Entity type that the indicator belongs to",
                   "required": true,
-                  "example": "2",
+                  "example": 2,
                   "options": [
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Objective"
                     },
                     {
-                      "value": "3",
+                      "value": 3,
                       "description": "Key Result"
                     }
                   ],
                   "enum": [
-                    "2",
-                    "3"
+                    2,
+                    3
                   ]
                 },
                 "entity_id": {
@@ -2572,62 +2600,62 @@
                   "type": "integer",
                   "description": "Indicator status",
                   "required": true,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "-1",
+                      "value": -1,
                       "description": "Undefined"
                     },
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Normal"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "At risk"
                     },
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Delayed"
                     }
                   ],
                   "enum": [
-                    "-1",
-                    "0",
-                    "1",
-                    "2"
+                    -1,
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "status_calculate_type": {
                   "type": "integer",
                   "description": "Indicator status calculation method",
                   "required": true,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Manual update"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Auto update based on progress and current time"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "基于风险最高的关键结果状态更新"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1",
-                    "2"
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "start_value": {
                   "type": "number",
                   "description": "Indicator start value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -2635,7 +2663,7 @@
                   "type": "number",
                   "description": "Indicator target value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -2643,7 +2671,7 @@
                   "type": "number",
                   "description": "Indicator current value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -2651,30 +2679,30 @@
                   "type": "integer",
                   "description": "Indicator current value calculation method",
                   "required": false,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Manual update"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Auto update based on Key Result progress"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "基于拆解的关键结果进度更新"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1",
-                    "2"
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "unit": {
                   "type": "object",
-                  "description": "Indicator unit. Not supported for Objective modification; not supported for Key Result modification with carry-over records",
+                  "description": "Indicator unit",
                   "required": false,
                   "ref": "indicator_unit",
                   "properties": {
@@ -2682,20 +2710,20 @@
                       "type": "integer",
                       "description": "Indicator unit type",
                       "required": true,
-                      "example": "0",
+                      "example": 0,
                       "options": [
                         {
-                          "value": "0",
+                          "value": 0,
                           "description": "Public"
                         },
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Custom"
                         }
                       ],
                       "enum": [
-                        "0",
-                        "1"
+                        0,
+                        1
                       ]
                     },
                     "unit_value": {
@@ -2733,7 +2761,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Objective ID. You can get this ID from the \"List Objectives in OKR Cycle\" API. The ID type must match the value of the user_id_type parameter",
+              "description": "Objective ID. You can get this ID from the \"List Objectives in OKR Cycle\" API",
               "example": "7342342398472398473"
             }
           },
@@ -2776,20 +2804,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -2833,24 +2861,25 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的 ID",
+                  "required": true,
+                  "example": "7342342398472398473"
                 },
                 "create_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的创建时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "update_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的更新时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -2873,6 +2902,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -2882,56 +2912,57 @@
                 },
                 "cycle_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的用户周期 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "目标的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "score": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的分数：[0,1]，支持一位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "notes": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的备注",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "weight": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的权重：[0,1]，支持三位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -2943,8 +2974,9 @@
                 },
                 "category_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "目标的分类 ID",
+                  "required": false,
+                  "example": "1"
                 }
               }
             }
@@ -2963,33 +2995,33 @@
           "id": "objectives.key_results_position",
           "path": "objectives/{objective_id}/key_results_position",
           "httpMethod": "PUT",
-          "description": "Modify Key Result positions in Objective",
+          "description": "Update the positions of all Key Results of an Objective",
           "parameters": {
             "objective_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Objective ID. You can get this ID from the \"List Objectives in OKR Cycle\" API. The ID type must match the value of the user_id_type parameter",
+              "description": "Objective ID. You can get this ID from the \"List Objectives in OKR Cycle\" API",
               "example": "7342342398472398473"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -3057,7 +3089,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -3080,6 +3112,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -3089,26 +3122,27 @@
                 },
                 "objective_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "关键结果的目标 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "关键结果的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "关键结果的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
@@ -3117,7 +3151,7 @@
                   "type": "number",
                   "description": "Key Result score: [0,1], supports one decimal place",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -3125,13 +3159,13 @@
                   "type": "number",
                   "description": "Objective weight: [0,1], supports three decimal places",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "deadline": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的截止时间，时间戳",
                   "required": false,
                   "example": "1760604634563"
                 }
@@ -3153,33 +3187,33 @@
           "id": "objectives.key_results_weight",
           "path": "objectives/{objective_id}/key_results_weight",
           "httpMethod": "PUT",
-          "description": "Modify Key Result weights in Objective",
+          "description": "Update the weights of all Key Results of an Objective",
           "parameters": {
             "objective_id": {
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Objective ID. The ID type must match the user_id_type or department_id_type parameter value. How to get: Call the \"Get Objectives in OKR Cycle\" API",
+              "description": "Objective ID. How to get: call the \"Get Objectives in OKR Cycle\" API",
               "example": "7342342398472398473"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -3230,7 +3264,7 @@
                   "type": "number",
                   "description": "Objective weight: [0,1], supports three decimal places",
                   "required": true,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 }
@@ -3263,7 +3297,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -3286,6 +3320,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -3295,26 +3330,27 @@
                 },
                 "objective_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "关键结果的目标 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "关键结果的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "关键结果的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
@@ -3323,7 +3359,7 @@
                   "type": "number",
                   "description": "Key Result score: [0,1], supports one decimal place",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -3331,13 +3367,13 @@
                   "type": "number",
                   "description": "Objective weight: [0,1], supports three decimal places",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "deadline": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的截止时间，时间戳",
                   "required": false,
                   "example": "1760604634563"
                 }
@@ -3365,27 +3401,27 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Objective ID. You can get this ID from the \"List Objectives in OKR Cycle\" API. The ID type must match the value of the user_id_type parameter",
+              "description": "Objective ID. You can get this ID from the \"List Objectives in OKR Cycle\" API",
               "example": "7342342398472398473"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -3429,7 +3465,7 @@
               "properties": {
                 "blocks": {
                   "type": "array",
-                  "description": "",
+                  "description": "文档结构是按行排列的，每行内容是一个 Block",
                   "required": false,
                   "properties": {
                     "block_element_type": {
@@ -3472,7 +3508,7 @@
               "type": "number",
               "description": "ObjectiveScore：[0,1]，Supports one decimal place",
               "required": false,
-              "example": "0.5",
+              "example": 0.5,
               "max": "1",
               "min": "0"
             },
@@ -3484,7 +3520,7 @@
               "properties": {
                 "blocks": {
                   "type": "array",
-                  "description": "",
+                  "description": "文档结构是按行排列的，每行内容是一个 Block",
                   "required": false,
                   "properties": {
                     "block_element_type": {
@@ -3545,24 +3581,25 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的 ID",
+                  "required": true,
+                  "example": "7342342398472398473"
                 },
                 "create_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的创建时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "update_time": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的更新时间，毫秒级时间戳",
                   "required": true,
                   "example": "1760604634563"
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -3585,6 +3622,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -3594,56 +3632,57 @@
                 },
                 "cycle_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "目标的用户周期 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "目标的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "score": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的分数：[0,1]，支持一位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "notes": {
                   "type": "object",
-                  "description": "",
+                  "description": "目标的备注",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
                 },
                 "weight": {
                   "type": "number",
-                  "description": "",
+                  "description": "目标的权重：[0,1]，支持三位小数",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -3655,8 +3694,9 @@
                 },
                 "category_id": {
                   "type": "string",
-                  "description": "",
-                  "required": false
+                  "description": "目标的分类 ID",
+                  "required": false,
+                  "example": "1"
                 }
               }
             }
@@ -3698,15 +3738,15 @@
               "type": "integer",
               "description": "Aligned entity type",
               "required": true,
-              "example": "2",
+              "example": 2,
               "options": [
                 {
-                  "value": "2",
+                  "value": 2,
                   "description": "Objective"
                 }
               ],
               "enum": [
-                "2"
+                2
               ]
             },
             "to_entity_id": {
@@ -3745,7 +3785,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Objective ID. The ID type must match the user_id_type or department_id_type parameter value. How to get: Call the \"Get Objectives in OKR Cycle\" API",
+              "description": "Objective ID. How to get: call the \"Get Objectives in OKR Cycle\" API",
               "example": "7342342398472398473"
             },
             "page_size": {
@@ -3753,8 +3793,8 @@
               "location": "query",
               "required": false,
               "description": "Page size, maximum 100",
-              "default": "10",
-              "example": "10",
+              "default": 10,
+              "example": 10,
               "max": "100",
               "min": "1"
             },
@@ -3762,7 +3802,8 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "align_type": {
               "type": "string",
@@ -3789,20 +3830,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -3840,14 +3881,15 @@
           "responseBody": {
             "has_more": {
               "type": "boolean",
-              "description": "Whether the response body has more parameters",
+              "description": "Whether there is a next page",
               "required": false,
-              "example": "true"
+              "example": true
             },
             "page_token": {
               "type": "string",
               "description": "Page identifier, when has_more is true, a new page_token will also be returned. Otherwise, page_token will not be returned",
-              "required": false
+              "required": false,
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "items": {
               "type": "array",
@@ -3857,7 +3899,8 @@
                 "id": {
                   "type": "string",
                   "description": "Alignment ID",
-                  "required": true
+                  "required": true,
+                  "example": "1"
                 },
                 "create_time": {
                   "type": "string",
@@ -3896,6 +3939,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -3905,7 +3949,7 @@
                 },
                 "to_owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner being aligned to",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -3928,6 +3972,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -3939,35 +3984,36 @@
                   "type": "integer",
                   "description": "Entity type that initiated the alignment",
                   "required": true,
-                  "example": "2",
+                  "example": 2,
                   "options": [
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Objective"
                     }
                   ],
                   "enum": [
-                    "2"
+                    2
                   ]
                 },
                 "from_entity_id": {
                   "type": "string",
                   "description": "Entity ID that initiated the alignment",
-                  "required": true
+                  "required": true,
+                  "example": "1"
                 },
                 "to_entity_type": {
                   "type": "integer",
                   "description": "Entity type being aligned to",
                   "required": true,
-                  "example": "2",
+                  "example": 2,
                   "options": [
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Objective"
                     }
                   ],
                   "enum": [
-                    "2"
+                    2
                   ]
                 },
                 "to_entity_id": {
@@ -4010,20 +4056,20 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -4085,7 +4131,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -4108,6 +4154,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -4119,20 +4166,20 @@
                   "type": "integer",
                   "description": "Entity type that the indicator belongs to",
                   "required": true,
-                  "example": "2",
+                  "example": 2,
                   "options": [
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Objective"
                     },
                     {
-                      "value": "3",
+                      "value": 3,
                       "description": "Key Result"
                     }
                   ],
                   "enum": [
-                    "2",
-                    "3"
+                    2,
+                    3
                   ]
                 },
                 "entity_id": {
@@ -4145,62 +4192,62 @@
                   "type": "integer",
                   "description": "Indicator status",
                   "required": true,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "-1",
+                      "value": -1,
                       "description": "Undefined"
                     },
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Normal"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "At risk"
                     },
                     {
-                      "value": "2",
+                      "value": 2,
                       "description": "Delayed"
                     }
                   ],
                   "enum": [
-                    "-1",
-                    "0",
-                    "1",
-                    "2"
+                    -1,
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "status_calculate_type": {
                   "type": "integer",
                   "description": "Indicator status calculation method",
                   "required": true,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Manual update"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Auto update based on progress and current time"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "基于风险最高的关键结果状态更新"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1",
-                    "2"
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "start_value": {
                   "type": "number",
                   "description": "Indicator start value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -4208,7 +4255,7 @@
                   "type": "number",
                   "description": "Indicator target value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -4216,7 +4263,7 @@
                   "type": "number",
                   "description": "Indicator current value",
                   "required": false,
-                  "example": "0",
+                  "example": 0.0,
                   "max": "99999999999",
                   "min": "-99999999999"
                 },
@@ -4224,30 +4271,30 @@
                   "type": "integer",
                   "description": "Indicator current value calculation method",
                   "required": false,
-                  "example": "0",
+                  "example": 0,
                   "options": [
                     {
-                      "value": "0",
+                      "value": 0,
                       "description": "Manual update"
                     },
                     {
-                      "value": "1",
+                      "value": 1,
                       "description": "Auto update based on Key Result progress"
                     },
                     {
-                      "value": "2",
-                      "description": ""
+                      "value": 2,
+                      "description": "基于拆解的关键结果进度更新"
                     }
                   ],
                   "enum": [
-                    "0",
-                    "1",
-                    "2"
+                    0,
+                    1,
+                    2
                   ]
                 },
                 "unit": {
                   "type": "object",
-                  "description": "Indicator unit. Not supported for Objective modification; not supported for Key Result modification with carry-over records",
+                  "description": "Indicator unit",
                   "required": false,
                   "ref": "indicator_unit",
                   "properties": {
@@ -4255,20 +4302,20 @@
                       "type": "integer",
                       "description": "Indicator unit type",
                       "required": true,
-                      "example": "0",
+                      "example": 0,
                       "options": [
                         {
-                          "value": "0",
+                          "value": 0,
                           "description": "Public"
                         },
                         {
-                          "value": "1",
+                          "value": 1,
                           "description": "Custom"
                         }
                       ],
                       "enum": [
-                        "0",
-                        "1"
+                        0,
+                        1
                       ]
                     },
                     "unit_value": {
@@ -4306,27 +4353,27 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Objective ID. The ID type must match the user_id_type or department_id_type parameter value. How to get: Call the \"Get Objectives in OKR Cycle\" API",
+              "description": "Objective ID. How to get: call the \"Get Objectives in OKR Cycle\" API",
               "example": "7342342398472398473"
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -4370,7 +4417,7 @@
               "properties": {
                 "blocks": {
                   "type": "array",
-                  "description": "",
+                  "description": "文档结构是按行排列的，每行内容是一个 Block",
                   "required": false,
                   "properties": {
                     "block_element_type": {
@@ -4419,7 +4466,7 @@
               "type": "number",
               "description": "Objective score: [0,1], supports one decimal place",
               "required": false,
-              "example": "0.5",
+              "example": 0.5,
               "max": "1",
               "min": "0"
             }
@@ -4453,7 +4500,7 @@
               "type": "string",
               "location": "path",
               "required": true,
-              "description": "Objective ID. The ID type must match the value of the user_id_type parameter. How to obtain: Call the \"Get Objectives in user OKR cycle\" API",
+              "description": "Objective ID. How to obtain: call the \"Get Objectives in user OKR cycle\" API",
               "example": "7342342398472398473"
             },
             "page_size": {
@@ -4461,8 +4508,8 @@
               "location": "query",
               "required": false,
               "description": "Page size, maximum 100",
-              "default": "10",
-              "example": "10",
+              "default": 10,
+              "example": 10,
               "max": "100",
               "min": "1"
             },
@@ -4470,26 +4517,27 @@
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups"
+              "description": "Page identifier. It is not filled in the first request, indicating traversal from the beginning; when there will be more groups, the new page_token will be returned at the same time, and the next traversal can use the page_token to get more groups",
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "user_id_type": {
               "type": "string",
               "location": "query",
               "required": false,
-              "description": "",
+              "description": "此次调用中使用的用户 ID 的类型",
               "default": "open_id",
               "options": [
                 {
                   "value": "user_id",
-                  "description": ""
+                  "description": "以user_id来识别用户"
                 },
                 {
                   "value": "union_id",
-                  "description": ""
+                  "description": "以union_id来识别用户"
                 },
                 {
                   "value": "open_id",
-                  "description": ""
+                  "description": "以open_id来识别用户"
                 }
               ],
               "enum": [
@@ -4527,14 +4575,15 @@
           "responseBody": {
             "has_more": {
               "type": "boolean",
-              "description": "Whether the response body has more parameters",
+              "description": "Whether there is a next page",
               "required": false,
-              "example": "true"
+              "example": true
             },
             "page_token": {
               "type": "string",
               "description": "Page identifier, when has_more is true, a new page_token will also be returned. Otherwise, page_token will not be returned",
-              "required": false
+              "required": false,
+              "example": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0="
             },
             "items": {
               "type": "array",
@@ -4561,7 +4610,7 @@
                 },
                 "owner": {
                   "type": "object",
-                  "description": "Owner who initiated the alignment",
+                  "description": "Owner",
                   "required": true,
                   "ref": "owner",
                   "properties": {
@@ -4584,6 +4633,7 @@
                       "type": "string",
                       "description": "Employee ID",
                       "required": false,
+                      "example": "ou_3bbe8a09c20e89cce9bff989ed840674",
                       "annotations": [
                         "open:x_user_id",
                         "tolerate_idtrans_failure"
@@ -4593,26 +4643,27 @@
                 },
                 "objective_id": {
                   "type": "string",
-                  "description": "",
-                  "required": true
+                  "description": "关键结果的目标 ID",
+                  "required": true,
+                  "example": "1"
                 },
                 "position": {
                   "type": "integer",
-                  "description": "",
+                  "description": "关键结果的序号：从 1 开始计数",
                   "required": true,
-                  "example": "1",
+                  "example": 1,
                   "max": "100",
                   "min": "1"
                 },
                 "content": {
                   "type": "object",
-                  "description": "",
+                  "description": "关键结果的内容",
                   "required": false,
                   "ref": "content_block",
                   "properties": {
                     "blocks": {
                       "type": "array",
-                      "description": "",
+                      "description": "文档结构是按行排列的，每行内容是一个 Block",
                       "required": false
                     }
                   }
@@ -4621,7 +4672,7 @@
                   "type": "number",
                   "description": "Key Result score: [0,1], supports one decimal place",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
@@ -4629,13 +4680,13 @@
                   "type": "number",
                   "description": "Objective weight: [0,1], supports three decimal places",
                   "required": false,
-                  "example": "0.5",
+                  "example": 0.5,
                   "max": "1",
                   "min": "0"
                 },
                 "deadline": {
                   "type": "string",
-                  "description": "",
+                  "description": "目标的截止时间，时间戳",
                   "required": false,
                   "example": "1760604634563"
                 }

@@ -15,17 +15,19 @@ import (
 )
 
 const (
-	baseURLResolveHintGeneric = "Provide a /base/, /wiki/, or /record/ URL, or use base +title-resolve --title if you only know the Base title."
+	baseURLResolveHintGeneric = "Provide a /base/, /app/, /wiki/, or /record/ URL, or use base +title-resolve --title if you only know the Base title."
 	baseTitleResolveHint      = "choose one candidate, then use +base-block-list to list tables, dashboards, workflows, and other Base blocks"
+	baseWikiNodeByTokenPath   = "/open-apis/wiki/v2/spaces/node_by_token"
 	nextStepBaseBlockList     = "use +base-block-list to list tables, dashboards, workflows, and other Base blocks"
 	nextStepRecordList        = "use +record-list to list records in the resolved table"
+	nextStepBaseApp           = "use +app-get with app_token; there is no +app-list, so list apps in a workspace with +workspace-entity-list --type baseapp"
 	titleResolveQueryMaxLen   = 30
 )
 
 var BaseURLResolve = common.Shortcut{
 	Service:     "base",
 	Command:     "+url-resolve",
-	Description: "Resolve a Base-related URL into Base coordinates",
+	Description: "Resolve a Base or BaseApp URL into usable coordinates",
 	Risk:        "read",
 	Scopes:      []string{},
 	ConditionalScopes: []string{
@@ -37,10 +39,11 @@ var BaseURLResolve = common.Shortcut{
 	AuthTypes: authTypes(),
 	HasFormat: true,
 	Flags: []common.Flag{
-		{Name: "url", Aliases: []string{"query"}, Desc: "Base/Wiki/record-share URL to resolve"},
+		{Name: "url", Aliases: []string{"query"}, Desc: "Base/BaseApp/Wiki/record-share URL to resolve"},
 	},
 	Tips: []string{
-		`Example: lark-cli base +url-resolve --url "https://example.larkoffice.com/base/<base_token>?table=<block_id>&view=<view_id>"`,
+		`Example: lark-cli base +url-resolve --url "https://example.larkoffice.com/base/<base_token>?table=<table_id>&view=<view_id>"`,
+		`BaseApp example: lark-cli base +url-resolve --url "https://example.larkoffice.com/app/<app_token>?pre_pathname=/base/workspace/<workspace_token>&pageId=<page_id>"`,
 		"Only URLs are accepted. For Base titles or keywords, use +title-resolve --title.",
 	},
 	Validate: func(ctx context.Context, runtime *common.RuntimeContext) error {
@@ -72,11 +75,11 @@ var BaseURLResolve = common.Shortcut{
 			selectedBlockID := strings.TrimSpace(parsed.Query().Get("table"))
 			if selectedBlockID == "" {
 				return dry.
-					GET("/open-apis/wiki/v2/spaces/get_node").
+					GET(baseWikiNodeByTokenPath).
 					Params(map[string]interface{}{"token": firstPathSegmentAfter(parsed.Path, "/wiki/")})
 			}
 			dry.Desc("2-step: resolve the Wiki node to a Base, then identify the selected Base block")
-			dry.GET("/open-apis/wiki/v2/spaces/get_node").
+			dry.GET(baseWikiNodeByTokenPath).
 				Desc("[1] Resolve the Wiki node to its underlying Base").
 				Params(map[string]interface{}{"token": firstPathSegmentAfter(parsed.Path, "/wiki/")})
 			dry.POST("/open-apis/base/v3/bases/:base_token/blocks/list").
@@ -164,6 +167,9 @@ func executeBaseURLResolve(runtime *common.RuntimeContext) error {
 	}
 
 	switch classifyBaseURL(parsed) {
+	case "baseapp_url":
+		runtime.OutFormat(resolveBaseAppURL(parsed), nil, nil)
+		return nil
 	case "base_url":
 		out := resolveBaseURL(parsed)
 		enrichBaseResolveHint(runtime, out, resolveBaseURLSelection(parsed))
@@ -228,6 +234,8 @@ func parseResolveURL(raw string) (*url.URL, error) {
 func classifyBaseURL(u *url.URL) string {
 	path := normalizeResolvePath(u.Path)
 	switch {
+	case pathSegmentExists(path, "/app/"):
+		return "baseapp_url"
 	case pathSegmentExists(path, "/base/workspace/"):
 		return "workspace_url"
 	case pathSegmentExists(path, "/base/add/"):
@@ -247,6 +255,25 @@ func classifyBaseURL(u *url.URL) string {
 	default:
 		return ""
 	}
+}
+
+func resolveBaseAppURL(u *url.URL) map[string]interface{} {
+	query := u.Query()
+	out := map[string]interface{}{
+		"input_type":    "baseapp_url",
+		"resource_type": "baseapp",
+		"app_token":     firstPathSegmentAfter(u.Path, "/app/"),
+		"hint": map[string]interface{}{
+			"next_step": nextStepBaseApp,
+		},
+	}
+	if pageID := strings.TrimSpace(query.Get("pageId")); pageID != "" {
+		out["page_id"] = pageID
+	}
+	if workspaceToken := firstPathSegmentAfter(query.Get("pre_pathname"), "/base/workspace/"); workspaceToken != "" {
+		out["workspace_token"] = workspaceToken
+	}
+	return out
 }
 
 func resolveBaseURL(u *url.URL) map[string]interface{} {
@@ -294,32 +321,55 @@ func applyResolvedTableSelection(out map[string]interface{}, selection baseURLSe
 	}
 }
 
+type baseWikiNode struct {
+	ObjType  string
+	ObjToken string
+	Title    string
+}
+
 func resolveWikiBaseURL(runtime *common.RuntimeContext, u *url.URL) (map[string]interface{}, error) {
 	token := firstPathSegmentAfter(u.Path, "/wiki/")
-	data, err := runtime.CallAPITyped("GET", "/open-apis/wiki/v2/spaces/get_node", map[string]interface{}{"token": token}, nil)
+	data, err := runtime.CallAPITyped("GET", baseWikiNodeByTokenPath, map[string]interface{}{"token": token}, nil)
 	if err != nil {
-		return nil, err
+		return nil, baseWikiNodeLookupProblem(err)
 	}
-	node := common.GetMap(data, "node")
-	objType := strings.TrimSpace(common.GetString(node, "obj_type"))
-	if objType != "bitable" {
+	nodeData := common.GetMap(data, "node")
+	node := baseWikiNode{
+		ObjType:  strings.TrimSpace(common.GetString(nodeData, "obj_type")),
+		ObjToken: strings.TrimSpace(common.GetString(nodeData, "obj_token")),
+		Title:    common.GetString(nodeData, "title"),
+	}
+	if node.ObjType != "bitable" {
 		return nil, resolveValidationError(
-			fmt.Sprintf("This Wiki URL resolves to %s, not Base.", valueOrUnknown(objType)),
+			fmt.Sprintf("This Wiki URL resolves to %s, not Base.", valueOrUnknown(node.ObjType)),
 			"Use the corresponding skill for that resource, or provide a Base URL.",
 		)
 	}
-	baseToken := strings.TrimSpace(common.GetString(node, "obj_token"))
-	if baseToken == "" {
+	if node.ObjToken == "" {
 		return nil, errs.NewInternalError(errs.SubtypeInvalidResponse, "wiki node response is missing obj_token")
 	}
 	return map[string]interface{}{
 		"input_type":      "wiki_url",
 		"resource_type":   "bitable",
 		"wiki_node_token": token,
-		"base_token":      baseToken,
-		"title":           common.GetString(node, "title"),
+		"base_token":      node.ObjToken,
+		"title":           node.Title,
 		"hint":            resolveHint("", nil),
 	}, nil
+}
+
+func baseWikiNodeLookupProblem(err error) error {
+	if problem, ok := errs.ProblemOf(err); ok {
+		switch problem.Code {
+		case 131012:
+			problem.Subtype, problem.Retryable = errs.SubtypeNotFound, false
+		case 131013, 131016:
+			problem.Subtype, problem.Retryable = errs.SubtypeInvalidParameters, false
+		case 131014:
+			problem.Subtype, problem.Retryable = errs.SubtypeFailedPrecondition, false
+		}
+	}
+	return err
 }
 
 func resolveRecordShareURL(runtime *common.RuntimeContext, u *url.URL) (map[string]interface{}, error) {
@@ -546,7 +596,7 @@ func resolvedRecordFieldKey(fieldIDs, fieldNames []interface{}, index int) strin
 }
 
 func recordShareNextStep(baseToken, tableID, recordID string) string {
-	return fmt.Sprintf(`use +record-upsert --base-token %s --table-id %s --record-id %s --json '{"<field_id>":"<new_value>"}' to update this record`, baseToken, tableID, recordID)
+	return fmt.Sprintf(`use +record-batch-update --base-token %s --table-id %s --json '{"update_records":{"%s":{"<field_id>":<CellValue>}}}' to update this record`, baseToken, tableID, recordID)
 }
 
 func resolveHint(tableID string, extra map[string]interface{}) map[string]interface{} {

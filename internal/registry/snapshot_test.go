@@ -11,6 +11,8 @@ import (
 	"errors"
 	"io/fs"
 	"log"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -59,7 +61,7 @@ func TestOpenSnapshotFSRejectsInvalidManifest(t *testing.T) {
 			mutate: func(fsys fstest.MapFS) {
 				rewriteManifest(t, fsys, func(m map[string]any) { m["schema_version"] = "1" })
 			},
-			reason: "schema_version must be an integer",
+			reason: "invalid JSON",
 		},
 		{
 			name: "no services",
@@ -160,6 +162,14 @@ func TestOpenSnapshotFSRejectsInvalidManifest(t *testing.T) {
 	}
 }
 
+func TestOpenSnapshotFSAcceptsSchemaV1ManifestWithoutSourceSHA256(t *testing.T) {
+	fsys := validSnapshotMapFS(t, "drive")
+
+	snapshot, err := OpenSnapshotFS(fsys)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"drive"}, snapshot.ServiceNames())
+}
+
 func TestOpenSnapshotFSAcceptsServiceNamePrefixWithHyphen(t *testing.T) {
 	fsys := validSnapshotMapFS(t, "task")
 	taskXBody := []byte(`{"name":"task-x","version":"v1","servicePath":"/open-apis/task-x","resources":{}}`)
@@ -255,13 +265,61 @@ func TestCatalogIntegrityValidation(t *testing.T) {
 			tt.mutate(fsys)
 			snapshot, err := OpenSnapshotFS(fsys)
 			require.NoError(t, err)
-			_, err = snapshot.Catalog("drive")
+			err = snapshot.Catalog().Preload("drive")
+			requireCatalogIntegrityError(t, err, `embedded catalog service "drive" failed integrity validation: `+tt.reason)
+			_, err = snapshot.Load("drive")
 			requireCatalogIntegrityError(t, err, `embedded catalog service "drive" failed integrity validation: `+tt.reason)
 		})
 	}
 }
 
-func TestOpenSnapshotFSIsLazyAndCatalogDeduplicatesReads(t *testing.T) {
+func TestCatalogIntegrityNamesCRLFCheckout(t *testing.T) {
+	fsys := validSnapshotMapFS(t, "drive")
+	lf := []byte("{\n  \"name\": \"drive\",\n  \"version\": \"v1\",\n" +
+		"  \"servicePath\": \"/open-apis/drive\",\n  \"resources\": {}\n}\n")
+	fsys["services/drive.json"] = &fstest.MapFile{Data: lf}
+	rewriteEntryForBody(t, fsys, lf)
+	fsys["services/drive.json"] = &fstest.MapFile{
+		Data: bytes.ReplaceAll(lf, []byte("\n"), []byte("\r\n")),
+	}
+
+	snapshot, err := OpenSnapshotFS(fsys)
+	require.NoError(t, err)
+	_, err = snapshot.Load("drive")
+
+	requireCatalogIntegrityError(t, err, `embedded catalog service "drive" failed integrity validation: size mismatch`)
+	problem, ok := errs.ProblemOf(err)
+	require.True(t, ok)
+	assert.Contains(t, problem.Hint, "CRLF line endings")
+}
+
+// TestCatalogIntegritySizeMismatchWithoutCRLFSaysNothingAboutLineEndings keeps
+// the diagnosis honest: a shard that is simply the wrong size must not be
+// blamed on a checkout filter.
+func TestCatalogIntegritySizeMismatchWithoutCRLFSaysNothingAboutLineEndings(t *testing.T) {
+	fsys := validSnapshotMapFS(t, "drive")
+	rewriteEntry(t, fsys, func(entry map[string]any) { entry["size"] = 1 })
+
+	snapshot, err := OpenSnapshotFS(fsys)
+	require.NoError(t, err)
+	_, err = snapshot.Load("drive")
+
+	requireCatalogIntegrityError(t, err, `embedded catalog service "drive" failed integrity validation: size mismatch`)
+	problem, ok := errs.ProblemOf(err)
+	require.True(t, ok)
+	assert.NotContains(t, problem.Hint, "CRLF")
+}
+
+// TestGitAttributesPinsCatalogLineEndings guards the repository-level half of
+// the same defect: without an eol=lf attribute a Windows checkout under
+// core.autocrlf rewrites every shard and fails the digest above.
+func TestGitAttributesPinsCatalogLineEndings(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", ".gitattributes"))
+	require.NoError(t, err, ".gitattributes must exist so catalog shards stay LF on every platform")
+	assert.Contains(t, string(data), "eol=lf")
+}
+
+func TestOpenSnapshotFSIsLazyAndCatalogReadsEachShardOnce(t *testing.T) {
 	base := validSnapshotMapFS(t, "drive")
 	rewriteManifest(t, base, func(manifest map[string]any) {
 		manifest["future_optional_field"] = map[string]any{"accepted": true}
@@ -272,14 +330,18 @@ func TestOpenSnapshotFSIsLazyAndCatalogDeduplicatesReads(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, counting.opens["services/drive.json"])
 
-	catalog, err := snapshot.Catalog("drive", "drive")
-	require.NoError(t, err)
-	require.Len(t, catalog.Services(), 1)
-	assert.Equal(t, 1, counting.opens["services/drive.json"])
+	catalog := snapshot.Catalog()
+	assert.Equal(t, []string{"drive"}, catalog.Names())
+	assert.Zero(t, counting.opens["services/drive.json"], "Names must not read shard bodies")
 
-	_, err = snapshot.Catalog("drive")
-	require.NoError(t, err)
-	assert.Equal(t, 2, counting.opens["services/drive.json"], "Snapshot must not cache service bodies")
+	_, ok := catalog.Service("drive")
+	require.True(t, ok)
+	require.Len(t, catalog.Services(), 1)
+	assert.Equal(t, 1, counting.opens["services/drive.json"], "one Catalog reads a shard at most once")
+
+	_, ok = snapshot.Catalog().Service("drive")
+	require.True(t, ok)
+	assert.Equal(t, 2, counting.opens["services/drive.json"], "Snapshot itself must not cache service bodies")
 }
 
 func TestEmbeddedSnapshot(t *testing.T) {
@@ -290,12 +352,14 @@ func TestEmbeddedSnapshot(t *testing.T) {
 	names[0] = "modified"
 	assert.Equal(t, expectedSnapshotServices, snapshot.ServiceNames())
 
-	catalog, err := snapshot.FullCatalog()
-	require.NoError(t, err)
+	catalog := snapshot.Catalog()
+	assert.Equal(t, expectedSnapshotServices, catalog.Names())
+	require.NoError(t, catalog.Preload(expectedSnapshotServices...))
 	require.Len(t, catalog.Services(), len(expectedSnapshotServices))
 	for i, service := range catalog.Services() {
 		assert.Equal(t, expectedSnapshotServices[i], service.Name)
 	}
+	require.NoError(t, catalog.Err())
 }
 
 func TestCatalogIntegrityCauseIsPreservedButRedacted(t *testing.T) {
@@ -307,7 +371,7 @@ func TestCatalogIntegrityCauseIsPreservedButRedacted(t *testing.T) {
 	snapshot, err := OpenSnapshotFS(&failingFS{FS: base, target: "services/drive.json", err: cause})
 	require.NoError(t, err)
 
-	_, err = snapshot.Catalog("drive")
+	err = snapshot.Catalog().Preload("drive")
 	requireCatalogIntegrityError(t, err, `embedded catalog service "drive" failed integrity validation: service file is missing`)
 	assert.ErrorIs(t, err, cause)
 	assert.Equal(t, cause, errors.Unwrap(err))

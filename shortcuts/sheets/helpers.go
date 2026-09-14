@@ -11,10 +11,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	neturl "net/url"
 	"strings"
 
 	"github.com/larksuite/cli/errs"
+	"github.com/larksuite/cli/extension/fileio"
 	"github.com/larksuite/cli/internal/validate"
 	"github.com/larksuite/cli/shortcuts/common"
 )
@@ -52,51 +54,57 @@ func sheetsInputStatError(flag string, err error) error {
 }
 
 // Drive media parent_type values for uploading an image into a spreadsheet.
-// Native spreadsheets use "sheet_image"; imported "office" spreadsheets use a
-// legacy synthetic-token prefix or a 28-character token whose interleaved
-// product/region marker is "OFL0X". The backend requires
-// "office_sheet_file" for those imported spreadsheets.
+// Native spreadsheets use "sheet_image"; the backend requires
+// "office_sheet_file" for a spreadsheet backed by an imported office file.
+//
+// Recognising one is common.IsLocalOfficeToken's job, not this package's: the
+// token shape is a drive-level property shared with slides, while the
+// parent_type it selects is what differs per domain, so only the mapping below
+// lives here.
 const (
 	sheetImageParentType      = "sheet_image"
 	officeSheetFileParentType = "office_sheet_file"
-	fakeOfficePrefix          = "fake_office_"
-	localOfficePrefix         = "local_office_"
 )
-
-// officePrefixes are the legacy synthetic token prefixes an imported "office"
-// spreadsheet may carry.
-var officePrefixes = []string{fakeOfficePrefix, localOfficePrefix}
-
-func isOfficeSpreadsheet(spreadsheetToken string) bool {
-	for _, prefix := range officePrefixes {
-		if strings.HasPrefix(spreadsheetToken, prefix) {
-			return true
-		}
-	}
-	if len(spreadsheetToken) != 28 {
-		return false
-	}
-	// The five-character marker occupies positions 5, 10, 15, 20, and 25
-	// (1-based) in the interleaved token.
-	marker := []byte{
-		spreadsheetToken[4],
-		spreadsheetToken[9],
-		spreadsheetToken[14],
-		spreadsheetToken[19],
-		spreadsheetToken[24],
-	}
-	return string(marker) == "OFL0X"
-}
 
 // sheetMediaParentType returns the drive media parent_type to use when
 // uploading an image whose parent_node is spreadsheetToken. It is the single
 // place that maps a spreadsheet token to its parent_type so every image-upload
 // entry point (and its dry-run preview) stays consistent.
 func sheetMediaParentType(spreadsheetToken string) string {
-	if isOfficeSpreadsheet(spreadsheetToken) {
+	if common.IsLocalOfficeToken(spreadsheetToken) {
 		return officeSheetFileParentType
 	}
 	return sheetImageParentType
+}
+
+// sheetsDryRunParentType returns the parent_type a dry-run should preview for
+// ref, without resolving anything.
+//
+// It exists so a wiki node_token never reaches sheetMediaParentType. Feeding it
+// one happens to yield the right answer — a wiki node_token carries its own
+// interleaved marker, not the office one, so it falls through to
+// sheetImageParentType — but by accident rather than on purpose. That leaves the
+// preview hostage to the shape of a token it is not even previewing, and to
+// every future rule added to common.IsLocalOfficeToken.
+//
+// A wiki ref is native by construction, not by default:
+// resolveWikiNodeToSpreadsheetToken rejects any node whose obj_type is not
+// "sheet", and a spreadsheet backed by an imported office file sits in drive as
+// a "file" node, so it never survives that gate to reach an upload. That gate is
+// where this assumption has to be revisited if it ever changes; Execute is
+// unaffected either way, since it derives the parent_type from the resolved
+// token.
+//
+// Callers are DryRun hooks, which swallow the parse error to build a
+// best-effort preview; the zero spreadsheetRef they pass on that path is neither
+// a wiki ref nor an office token, so it previews the native value.
+//
+// This mirrors slidesDryRunParentType (shortcuts/slides/slides_media_upload.go).
+func sheetsDryRunParentType(ref spreadsheetRef) string {
+	if ref.Kind == spreadsheetRefWiki {
+		return sheetImageParentType
+	}
+	return sheetMediaParentType(ref.Token)
 }
 
 // uploadSheetImage uploads a local image file as a spreadsheet media asset and
@@ -104,14 +112,90 @@ func sheetMediaParentType(spreadsheetToken string) string {
 // place so the parent_type selection (see sheetMediaParentType) is never
 // duplicated or forgotten at a call site. Callers are expected to have already
 // resolved spreadsheetToken (the upload's parent_node) and stat'd the file.
+//
+// Files over 20 MB go through the chunked endpoint rather than failing.
+// upload_all answers an oversized file with a bare 1061002 "upload media
+// failed: params error" that names neither the size nor the limit, so there is
+// nothing for the caller to act on. Dispatching by size here is what keeps an
+// oversized image working through every sheets upload surface.
 func uploadSheetImage(runtime *common.RuntimeContext, spreadsheetToken, filePath, fileName string, fileSize int64) (string, error) {
-	return common.UploadDriveMediaAllTyped(runtime, common.DriveMediaUploadAllConfig{
+	parentType := sheetMediaParentType(spreadsheetToken)
+	if fileSize <= common.MaxDriveMediaUploadSinglePartSize {
+		return common.UploadDriveMediaAllTyped(runtime, common.DriveMediaUploadAllConfig{
+			FilePath:   filePath,
+			FileName:   fileName,
+			FileSize:   fileSize,
+			ParentType: parentType,
+			ParentNode: &spreadsheetToken,
+		})
+	}
+	return common.UploadDriveMediaMultipartTyped(runtime, common.DriveMediaMultipartUploadConfig{
 		FilePath:   filePath,
 		FileName:   fileName,
 		FileSize:   fileSize,
-		ParentType: sheetMediaParentType(spreadsheetToken),
-		ParentNode: &spreadsheetToken,
+		ParentType: parentType,
+		ParentNode: spreadsheetToken,
 	})
+}
+
+// sheetImageShouldUseMultipart is the dry-run's planning hint for which branch
+// of uploadSheetImage a file will take. It is best-effort by design: a preview
+// may name a path that does not exist yet, and a stat failure plans the
+// single-part step rather than refusing to render. Execute re-stats and decides
+// for itself.
+func sheetImageShouldUseMultipart(fio fileio.FileIO, filePath string) bool {
+	info, err := fio.Stat(filePath)
+	if err != nil {
+		return false
+	}
+	return info.Mode().IsRegular() && info.Size() > common.MaxDriveMediaUploadSinglePartSize
+}
+
+// appendSheetImageUploadDryRun renders the upload step or steps that precede an
+// image write's tool call, so a preview shows the endpoints Execute will
+// actually hit: one upload_all under 20 MB, and the
+// upload_prepare / upload_part / upload_finish trio above it.
+//
+// parentNode is previewed verbatim — sheets dry-runs show the token as given,
+// including an unresolved wiki node_token — while parentType comes from the
+// ref's kind via sheetsDryRunParentType, which is the one value that must not be
+// read out of that token.
+func appendSheetImageUploadDryRun(d *common.DryRunAPI, runtime *common.RuntimeContext, ref spreadsheetRef, filePath, fileName string) {
+	parentType := sheetsDryRunParentType(ref)
+	if sheetImageShouldUseMultipart(runtime.FileIO(), filePath) {
+		d.POST("/open-apis/drive/v1/medias/upload_prepare").
+			Desc("upload local image to drive in chunks, files > 20 MB (parent_type=" + parentType + ")").
+			Body(map[string]interface{}{
+				"file_name":   fileName,
+				"parent_type": parentType,
+				"parent_node": ref.Token,
+				"size":        "<file_size>",
+			}).
+			POST("/open-apis/drive/v1/medias/upload_part").
+			Desc("upload each chunk, repeated <block_num> times").
+			Body(map[string]interface{}{
+				"upload_id": "<upload_id>",
+				"seq":       "<chunk_index>",
+				"size":      "<chunk_size>",
+				"file":      "<chunk_binary>",
+			}).
+			POST("/open-apis/drive/v1/medias/upload_finish").
+			Desc("finish the chunked upload and return the file_token").
+			Body(map[string]interface{}{
+				"upload_id": "<upload_id>",
+				"block_num": "<block_num>",
+			})
+		return
+	}
+	d.POST("/open-apis/drive/v1/medias/upload_all").
+		Desc("upload local image to drive (parent_type=" + parentType + ")").
+		Body(map[string]interface{}{
+			"file_name":   fileName,
+			"parent_type": parentType,
+			"parent_node": ref.Token,
+			"size":        "<file_size>",
+			"file":        "@" + filePath,
+		})
 }
 
 // spreadsheetRef classification: a --url / --spreadsheet-token input names a
@@ -121,6 +205,13 @@ const (
 	spreadsheetRefSheet = "sheet"
 	spreadsheetRefWiki  = "wiki"
 )
+
+const sheetsWikiNodeByTokenPath = "/open-apis/wiki/v2/spaces/node_by_token"
+
+type sheetsWikiNode struct {
+	ObjType  string
+	ObjToken string
+}
 
 // spreadsheetRef is a parsed --url / --spreadsheet-token input. A wiki ref holds
 // the still-unresolved wiki node_token; resolveSpreadsheetTokenExec turns it
@@ -208,7 +299,7 @@ func pathSegmentAfter(path, prefix string) (string, bool) {
 // DryRun.
 //
 // A /wiki/ URL yields the still-unresolved wiki node_token: turning it into the
-// backing spreadsheet token needs a get_node call, which only Execute may make.
+// backing spreadsheet token needs a node_by_token call, which only Execute may make.
 // Validate/DryRun only need a non-empty, control-char-clean token, so the
 // node_token passes through unchanged here; Execute paths call
 // resolveSpreadsheetTokenExec instead.
@@ -222,7 +313,7 @@ func resolveSpreadsheetToken(runtime *common.RuntimeContext) (string, error) {
 
 // resolveSpreadsheetTokenExec is the Execute-time counterpart of
 // resolveSpreadsheetToken: it additionally resolves a /wiki/ URL's node_token to
-// the backing spreadsheet token via wiki get_node, verifying obj_type=sheet.
+// the backing spreadsheet token via wiki node_by_token, verifying obj_type=sheet.
 // Non-wiki inputs make no API call. Use this from every sheets Execute hook and
 // keep resolveSpreadsheetToken in Validate/DryRun so those stay network-free.
 func resolveSpreadsheetTokenExec(runtime *common.RuntimeContext) (string, error) {
@@ -244,21 +335,37 @@ func resolveWikiNodeToSpreadsheetToken(runtime *common.RuntimeContext, nodeToken
 	if err := runtime.EnsureScopes([]string{"wiki:node:read"}); err != nil {
 		return "", err
 	}
-	data, err := runtime.CallAPITyped("GET", "/open-apis/wiki/v2/spaces/get_node",
+	data, err := runtime.CallAPITyped("GET", sheetsWikiNodeByTokenPath,
 		map[string]interface{}{"token": nodeToken}, nil)
 	if err != nil {
-		return "", err
+		return "", sheetsWikiNodeLookupProblem(err)
 	}
-	node := common.GetMap(data, "node")
-	objType := common.GetString(node, "obj_type")
-	objToken := common.GetString(node, "obj_token")
-	if objType == "" || objToken == "" {
-		return "", errs.NewInternalError(errs.SubtypeInvalidResponse, "wiki get_node returned incomplete node data for %q", nodeToken)
+	nodeData := common.GetMap(data, "node")
+	node := sheetsWikiNode{
+		ObjType:  common.GetString(nodeData, "obj_type"),
+		ObjToken: common.GetString(nodeData, "obj_token"),
 	}
-	if objType != "sheet" {
-		return "", sheetsValidationForFlag("url", "wiki URL resolves to obj_type=%q, but a spreadsheet (obj_type=sheet) is required", objType)
+	if node.ObjType == "" || node.ObjToken == "" {
+		return "", errs.NewInternalError(errs.SubtypeInvalidResponse, "wiki node_by_token returned incomplete node data for %q", nodeToken)
 	}
-	return objToken, nil
+	if node.ObjType != "sheet" {
+		return "", sheetsValidationForFlag("url", "wiki URL resolves to obj_type=%q, but a spreadsheet (obj_type=sheet) is required", node.ObjType)
+	}
+	return node.ObjToken, nil
+}
+
+func sheetsWikiNodeLookupProblem(err error) error {
+	if problem, ok := errs.ProblemOf(err); ok {
+		switch problem.Code {
+		case 131012:
+			problem.Subtype, problem.Retryable = errs.SubtypeNotFound, false
+		case 131013, 131016:
+			problem.Subtype, problem.Retryable = errs.SubtypeInvalidParameters, false
+		case 131014:
+			problem.Subtype, problem.Retryable = errs.SubtypeFailedPrecondition, false
+		}
+	}
+	return err
 }
 
 // resolveSheetSelector validates the --sheet-id / --sheet-name XOR and
@@ -420,12 +527,12 @@ func parseJSONFlag(runtime flagView, name string) (interface{}, error) {
 		// Composite payloads that embed formulas / quotes / commas are the
 		// classic source of this error: inlined into the shell, the JSON gets
 		// mangled (e.g. `\$` → "invalid character in string escape"). For any
-		// flag that accepts stdin, steer the caller there — passing the payload
-		// via `--<flag> - < file` sidesteps shell escaping entirely.
+		// flag that accepts stdin, steer the caller off the command line
+		// entirely, in the spelling their own shell has (mangledPayloadHint).
 		if flagAcceptsStdin(runtime.Command(), name) {
-			return nil, sheetsValidationForFlag(name,
-				"--%s: invalid JSON: %v; if the payload contains formulas / quotes / commas, pass it via stdin (`--%s - < file`) so the shell doesn't mangle the JSON",
-				name, err, name).WithCause(err)
+			return nil, sheetsValidationForFlag(name, "--%s: invalid JSON: %v", name, err).
+				WithCause(err).
+				WithHint("%s", mangledPayloadHint(name))
 		}
 		return nil, sheetsValidationForFlag(name, "--%s: invalid JSON: %v", name, err).WithCause(err)
 	}
@@ -452,11 +559,13 @@ func parseJSONFlag(runtime flagView, name string) (interface{}, error) {
 // doubt may be rewritten; anything ambiguous must fail with a prescription
 // instead. Applied to the parsed JSON value inside parseJSONFlag.
 var jsonFlagNormalizers = map[string]map[string]func(interface{}) interface{}{
-	"+cells-set":             {"cells": normalizeCellsFlagValue},
+	"+cells-set":             {"cells": normalizeCellsFlagValue, "writes": normalizeWritesFlagValue},
 	"+cells-set-style":       {"border-styles": normalizeBorderStylesFlagValue},
 	"+cells-batch-set-style": {"border-styles": normalizeBorderStylesFlagValue},
 	"+chart-create":          {"properties": normalizeChartHexColors},
 	"+chart-update":          {"properties": normalizeChartHexColors},
+	"+cond-format-create":    {"properties": normalizeCondFormatProperties},
+	"+cond-format-update":    {"properties": normalizeCondFormatProperties},
 }
 
 // normalizeChartHexColors walks a chart properties payload and prefixes bare
@@ -574,6 +683,51 @@ func wrapLoneCellObject(v interface{}) interface{} {
 	return []interface{}{[]interface{}{obj}}
 }
 
+// unwrapCellsEnvelope strips the {"cells": …} wrapper agents produce when they
+// mistake the flag name for a JSON key (`json.dump({"cells": cells}, f)` in a
+// payload-generating script) — the single largest root-shape rejection in the
+// eval corpus, 11 of 21 traced `--cells: expected type "array", got "object"`
+// failures.
+//
+// Only a LONE "cells" key is unwrapped: an object carrying siblings
+// ({"cells": …, "range": …}) is the whole tool input, and dropping them would
+// write the right cells to the wrong place. A scalar under the key stays too,
+// so the error can quote the shape the caller actually passed.
+func unwrapCellsEnvelope(v interface{}) interface{} {
+	obj, ok := v.(map[string]interface{})
+	if !ok || len(obj) != 1 {
+		return v
+	}
+	inner, ok := obj["cells"]
+	if !ok {
+		return v
+	}
+	switch inner.(type) {
+	case []interface{}, map[string]interface{}:
+		return inner
+	}
+	return v
+}
+
+// scalarCellValue lifts a bare scalar sitting in a cell slot into the
+// {"value": …} the cell contract expects, returning nil for anything else.
+// Writing a plain values matrix is the openpyxl / gspread habit, and rows
+// routinely MIX the two forms once a formula shows up
+// (["1","电动大门",10331.00,{"formula":"=D2*E2"}]). A cell slot holds nothing
+// but a cell and value's schema is exactly string|number|boolean, so the
+// meaning is beyond doubt.
+//
+// null is deliberately NOT lifted: {} (leave the cell untouched) and
+// {"value":""} (write an empty string) are both plausible readings of a hole
+// in a values matrix, so the validator prescribes that one instead.
+func scalarCellValue(v interface{}) map[string]interface{} {
+	switch v.(type) {
+	case string, bool, float64, json.Number, int, int64:
+		return map[string]interface{}{"value": v}
+	}
+	return nil
+}
+
 // requireJSONObject is parseJSONFlag + a type assertion to map[string]interface{}.
 func requireJSONObject(runtime flagView, name string) (map[string]interface{}, error) {
 	v, err := parseJSONFlag(runtime, name)
@@ -619,6 +773,96 @@ func aggregatedIssueText(err error) string {
 		return msg
 	}
 	return msg + " (" + hint + ")"
+}
+
+// collapseAggregatedIssues renders the collected sub-errors for a folded
+// message, stating each DISTINCT defect once and naming the other locations
+// it occurred at. Results keep first-appearance order.
+//
+// One wrong field name in a payload that styles N cells produces N identical
+// issues, each re-listing the full supported-field vocabulary. 08-18..24
+// eval: a six-cell payload with one bad field spent 1.6k characters saying
+// the same thing six times, and the prescription the agent needed was buried
+// mid-message — the fold meant to save round trips was drowning its own
+// answer. Deduplicated, that payload states the fix once and names the six
+// ranges, which is what a rewrite actually needs.
+//
+// Two issues are "the same defect" when their text matches after every
+// [<index>] is blanked, so cell_styles[0] and cell_styles[7] collapse while
+// two different bad fields never do.
+func collapseAggregatedIssues(probs []error) []string {
+	const maxRepeatPaths = 3
+	type group struct {
+		text  string
+		paths []string
+	}
+	order := make([]string, 0, len(probs))
+	groups := make(map[string]*group, len(probs))
+	for _, e := range probs {
+		text := aggregatedIssueText(e)
+		key := blankIssueIndices(text)
+		g, seen := groups[key]
+		if !seen {
+			g = &group{text: text}
+			groups[key] = g
+			order = append(order, key)
+			continue
+		}
+		g.paths = append(g.paths, issuePathToken(text))
+	}
+	out := make([]string, 0, len(order))
+	for _, key := range order {
+		g := groups[key]
+		if len(g.paths) == 0 {
+			out = append(out, g.text)
+			continue
+		}
+		shown := g.paths
+		suffix := ""
+		if len(shown) > maxRepeatPaths {
+			suffix = fmt.Sprintf(", +%d more", len(shown)-maxRepeatPaths)
+			shown = shown[:maxRepeatPaths]
+		}
+		out = append(out, fmt.Sprintf("%s [same at %d more: %s%s]",
+			g.text, len(g.paths), strings.Join(shown, ", "), suffix))
+	}
+	return out
+}
+
+// blankIssueIndices replaces every [<digits>] with [#], so the grouping key of
+// an issue ignores which item it was found on.
+func blankIssueIndices(text string) string {
+	var b strings.Builder
+	b.Grow(len(text))
+	for i := 0; i < len(text); i++ {
+		if text[i] != '[' {
+			b.WriteByte(text[i])
+			continue
+		}
+		j := i + 1
+		for j < len(text) && text[j] >= '0' && text[j] <= '9' {
+			j++
+		}
+		if j > i+1 && j < len(text) && text[j] == ']' {
+			b.WriteString("[#]")
+			i = j
+			continue
+		}
+		b.WriteByte(text[i])
+	}
+	return b.String()
+}
+
+// issuePathToken is the leading path of an issue message ("--styles.styles[0]
+// .cell_styles[1].border_type"), used to name a repeat's location. Every
+// collected sub-error starts with its path, either inline or as a "path: "
+// prefix added by prefixValidationIssue.
+func issuePathToken(text string) string {
+	token := text
+	if i := strings.IndexByte(token, ' '); i >= 0 {
+		token = token[:i]
+	}
+	return strings.TrimSuffix(token, ":")
 }
 
 // prefixValidationIssue re-labels a collected sub-error with the path it was

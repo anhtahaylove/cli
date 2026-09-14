@@ -21,9 +21,11 @@ import (
 	"github.com/larksuite/cli/errs"
 	"github.com/larksuite/cli/internal/apicatalog"
 	internalauth "github.com/larksuite/cli/internal/auth"
+	"github.com/larksuite/cli/internal/cmdmeta"
 	"github.com/larksuite/cli/internal/cmdutil"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/deprecation"
+	"github.com/larksuite/cli/internal/meta"
 	"github.com/larksuite/cli/internal/output"
 	"github.com/larksuite/cli/internal/recovery"
 	"github.com/larksuite/cli/internal/registry"
@@ -523,10 +525,9 @@ func TestApplyNeedAuthorizationHint_ServiceMethodUsesLocalScopesWhenNoUAT(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.APICatalog, err = snapshot.Catalog("drive")
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.APICatalog = apicatalog.Filter(snapshot.Catalog(), func(svc meta.Service) (meta.Service, bool) {
+		return svc, svc.Name == "drive"
+	})
 	f.ResolvedIdentity = core.AsUser
 
 	var target apicatalog.MethodRef
@@ -626,6 +627,12 @@ func TestApplyNeedAuthorizationHint_ShortcutUsesDeclaredScopesWhenNoUAT(t *testi
 	shortcutCmd := &cobra.Command{Use: "+create"}
 	root.AddCommand(serviceCmd)
 	serviceCmd.AddCommand(shortcutCmd)
+	cmdmeta.SetDeclaredScopes(shortcutCmd, map[string][]string{"user": {
+		"docx:document:create",
+		"docs:document.media:upload",
+		"docx:document:write_only",
+		"docx:document:readonly",
+	}})
 	f.CurrentCommand = shortcutCmd
 
 	authErr := newAuthErrorWithNeedAuthMarker()
@@ -641,7 +648,7 @@ func TestApplyNeedAuthorizationHint_ShortcutUsesDeclaredScopesWhenNoUAT(t *testi
 		t.Errorf("Subtype = %q, want %q", problem.Subtype, errs.SubtypeUnknown)
 	}
 
-	if !strings.Contains(problem.Hint, `auth login --scope "docx:document:create" --no-wait --json`) {
+	if !strings.Contains(problem.Hint, `auth login --scope "docx:document:create docs:document.media:upload docx:document:write_only docx:document:readonly" --no-wait --json`) {
 		t.Errorf("expected shortcut scoped recovery, got %q", problem.Hint)
 	}
 }
@@ -661,6 +668,10 @@ func TestApplyNeedAuthorizationHint_ShortcutIncludesConditionalScopes(t *testing
 	shortcutCmd := &cobra.Command{Use: "+status"}
 	root.AddCommand(serviceCmd)
 	serviceCmd.AddCommand(shortcutCmd)
+	cmdmeta.SetDeclaredScopes(shortcutCmd, map[string][]string{"user": {
+		"drive:drive.metadata:readonly",
+		"drive:file:download",
+	}})
 	f.CurrentCommand = shortcutCmd
 
 	authErr := newAuthErrorWithNeedAuthMarker()
@@ -697,6 +708,12 @@ func TestApplyNeedAuthorizationHint_AppendsExistingHint(t *testing.T) {
 	shortcutCmd := &cobra.Command{Use: "+create"}
 	root.AddCommand(serviceCmd)
 	serviceCmd.AddCommand(shortcutCmd)
+	cmdmeta.SetDeclaredScopes(shortcutCmd, map[string][]string{"user": {
+		"docx:document:create",
+		"docs:document.media:upload",
+		"docx:document:write_only",
+		"docx:document:readonly",
+	}})
 	f.CurrentCommand = shortcutCmd
 
 	authErr := newAuthErrorWithNeedAuthMarker()
@@ -716,7 +733,12 @@ func TestApplyNeedAuthorizationHint_AppendsExistingHint(t *testing.T) {
 		t.Errorf("rendered error lost need-authorization cause %v: %v", authErr.Cause, rendered)
 	}
 
-	want := "existing hint\n" + recovery.UserAuthorization("docx:document:create").String()
+	want := "existing hint\n" + recovery.UserAuthorization(
+		"docx:document:create",
+		"docs:document.media:upload",
+		"docx:document:write_only",
+		"docx:document:readonly",
+	).String()
 	if problem.Hint != want {
 		t.Errorf("expected appended hint %q, got %q", want, problem.Hint)
 	}

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/larksuite/cli/errs"
+	"github.com/larksuite/cli/internal/affordance"
 	"github.com/larksuite/cli/internal/apicatalog"
 	"github.com/larksuite/cli/internal/cmdutil"
 	"github.com/larksuite/cli/internal/core"
@@ -51,6 +52,24 @@ type SchemaOptions struct {
 	// command tree, so the tree answers it. A nil value means the answer is
 	// unavailable and no such hint is offered.
 	CommandExists func(name string) bool
+
+	// Conceals reports whether any plugin in this build declares it will
+	// register a command restriction. It is a pre-flight declaration, so the
+	// answer is available before a shard is parsed — which is the whole point:
+	// it decides whether the service index can be answered from the manifest
+	// alone. A nil value means the answer is unavailable.
+	Conceals func() bool
+}
+
+// SchemaOption supplies an optional build-local signal to the schema command.
+// The options are variadic so the exported constructor's signature stays put.
+type SchemaOption func(*SchemaOptions)
+
+// WithConcealment supplies this build's answer to whether any plugin declares
+// it will conceal commands. The root builder knows it from the frozen plugin
+// snapshot; callers that build no plugins can omit it.
+func WithConcealment(conceals func() bool) SchemaOption {
+	return func(o *SchemaOptions) { o.Conceals = conceals }
 }
 
 // NewCmdSchema creates the schema command. If runF is non-nil it is called instead of the default runner (test hook).
@@ -66,8 +85,12 @@ func NewCmdSchemaWithVisibility(
 	f *cmdutil.Factory,
 	visibility CommandVisibility,
 	runF func(*SchemaOptions) error,
+	options ...SchemaOption,
 ) *cobra.Command {
 	opts := &SchemaOptions{Factory: f}
+	for _, apply := range options {
+		apply(opts)
+	}
 
 	cmd := &cobra.Command{
 		Use:   "schema [path | service resource method]",
@@ -149,7 +172,7 @@ func topLevelCommandLookup(root *cobra.Command) func(string) bool {
 func schemaRunWithVisibility(opts *SchemaOptions, visibility CommandVisibility) error {
 	out := opts.Factory.IOStreams.Out
 	mode := opts.Factory.ResolveStrictMode(opts.Ctx)
-	return runSchemaCatalog(out, apicatalog.ParsePath(opts.Args), mode, opts.Factory.APICatalog, visibility, opts.JqExpr, opts.CommandExists)
+	return runSchemaCatalog(out, apicatalog.ParsePath(opts.Args), mode, opts.Factory.APICatalog, opts.Factory.Affordance, visibility, opts.JqExpr, opts.CommandExists, opts.Conceals)
 }
 
 // runSchemaCatalog resolves the path through the build-selected schema catalog
@@ -166,42 +189,77 @@ func runSchemaCatalog(
 	parts []string,
 	mode core.StrictMode,
 	catalog apicatalog.Catalog,
+	guidance *affordance.Resolver,
 	visibility CommandVisibility,
 	jqExpr string,
 	commandExists func(string) bool,
+	conceals func() bool,
 ) error {
 	// Test the source catalog before presentation projection. A distribution
 	// that intentionally conceals every generated method still has metadata;
 	// bare `schema` should render an empty list rather than claim metadata is
 	// unavailable.
-	if len(catalog.Services()) == 0 {
+	if len(catalog.Names()) == 0 {
 		return errs.NewValidationError(errs.SubtypeFailedPrecondition, "No API metadata available").
 			WithHint("the current command build did not select any API metadata")
 	}
 	catalog = projectSchemaCatalog(catalog, visibility)
 	target, err := catalog.Resolve(parts)
 	if err != nil {
+		if loadErr := catalog.Err(); loadErr != nil {
+			return loadErr
+		}
 		return resolveError(err, parts, commandExists)
 	}
 	filter := registry.FilterForStrictMode(mode)
 
+	// Navigation parses shards lazily, so a corrupt shard must fail typed
+	// rather than silently shrink a listing. Every branch below therefore
+	// checks Err after it has walked the catalog and before it renders.
 	switch target.Kind {
 	case apicatalog.TargetAll:
-		return emit(out, jqExpr, schema.BuildServiceIndex(
-			visibleServices(catalog, mode, filter),
+		index := schema.BuildServiceIndex(
+			visibleServices(catalog, mode, filter, concealmentPossible(visibility, conceals)),
 			func(name string) string { return registry.GetServiceDescription(name, "en") },
-		))
+		)
+		if loadErr := catalog.Err(); loadErr != nil {
+			return loadErr
+		}
+		return emit(out, jqExpr, index)
 	case apicatalog.TargetService, apicatalog.TargetResource:
-		return emit(out, jqExpr, schema.BuildMethodIndex(parts[0], catalog.MethodRefs(target, filter)))
+		refs := catalog.MethodRefs(target, filter)
+		if loadErr := catalog.Err(); loadErr != nil {
+			return loadErr
+		}
+		return emit(out, jqExpr, schema.BuildMethodIndex(parts[0], refs))
 	}
 
 	refs := catalog.MethodRefs(target, filter)
+	if loadErr := catalog.Err(); loadErr != nil {
+		return loadErr
+	}
 	if len(refs) == 0 {
 		return errs.NewValidationError(errs.SubtypeInvalidArgument,
 			"Method %s not available in current identity mode", target.Method.SchemaPath()).
 			WithHint("strict mode hides methods the active account identity cannot call; it is shown for an identity (user or bot) that has the required access token")
 	}
-	return emit(out, jqExpr, schema.EnvelopeOfCatalog(catalog, refs[0]))
+	return emit(out, jqExpr, schema.EnvelopeOf(guidance, refs[0]))
+}
+
+// concealmentPossible reports whether this build can drop a service from the
+// schema listing that the manifest still names. Concealment only ever happens
+// through the presentation projection, so a build with no visibility callback
+// cannot hide anything. When there is one, the frozen plugin snapshot decides;
+// an unavailable answer counts as concealing, the same direction every other
+// unknown takes here.
+func concealmentPossible(visibility CommandVisibility, conceals func() bool) bool {
+	if visibility == nil {
+		return false
+	}
+	if conceals == nil {
+		return true
+	}
+	return conceals()
 }
 
 // visibleServices lists the services for the service index. Service-level
@@ -211,7 +269,26 @@ func runSchemaCatalog(
 // matching how the root help is pruned. Filtering unconditionally would make
 // the bare `schema` walk every service; filtering never would make this listing
 // wider than the root help, re-exposing services the command tree hides.
-func visibleServices(catalog apicatalog.Catalog, mode core.StrictMode, filter apicatalog.MethodFilter) []meta.Service {
+//
+// With neither channel active the listing is exactly the manifest's own service
+// set, which Names answers without parsing a single service shard — the "None"
+// assembly scope the bare `schema` is specified to cost. Every manifest service
+// carries a curated description, so dropping the metadata body loses nothing the
+// index renders; descFor supplies the text either way.
+func visibleServices(
+	catalog apicatalog.Catalog,
+	mode core.StrictMode,
+	filter apicatalog.MethodFilter,
+	concealing bool,
+) []meta.Service {
+	if !mode.IsActive() && !concealing {
+		names := catalog.Names()
+		out := make([]meta.Service, 0, len(names))
+		for _, name := range names {
+			out = append(out, meta.Service{Name: name})
+		}
+		return out
+	}
 	all := catalog.Services()
 	if !mode.IsActive() {
 		return all
@@ -267,39 +344,31 @@ func domainOrPlaceholder(domain string) string {
 // projection removed its last reachable method, so a fully concealed service
 // cannot survive as an empty schema namespace. Originally-empty, unaffected
 // metadata remains unchanged for backward compatibility.
+//
+// The projection is applied per service on first navigation, so a precise
+// `schema drive.file.list` still parses only the drive shard.
 func projectSchemaCatalog(catalog apicatalog.Catalog, visibility CommandVisibility) apicatalog.Catalog {
 	if visibility == nil {
 		return catalog
 	}
-
-	services := make([]meta.Service, 0, len(catalog.Services()))
-	changed := false
-	for _, service := range catalog.Services() {
+	return apicatalog.Filter(catalog, func(service meta.Service) (meta.Service, bool) {
 		servicePath := []string{service.Name}
 		if !visibility(servicePath) {
-			changed = true
-			continue
+			return meta.Service{}, false
 		}
-
 		resources, resourceChanged, hasVisibleMethod := projectSchemaResources(
 			service.Resources,
 			servicePath,
 			visibility,
 		)
 		if resourceChanged && !hasVisibleMethod {
-			changed = true
-			continue
+			return meta.Service{}, false
 		}
 		if resourceChanged {
 			service.Resources = resources
-			changed = true
 		}
-		services = append(services, service)
-	}
-	if !changed {
-		return catalog
-	}
-	return apicatalog.New(catalog.Source(), services)
+		return service, true
+	})
 }
 
 func projectSchemaResources(

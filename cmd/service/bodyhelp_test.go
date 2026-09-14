@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/larksuite/cli/internal/apicatalog"
 	"github.com/larksuite/cli/internal/cmdutil"
 	"github.com/larksuite/cli/internal/meta"
 	"github.com/spf13/cobra"
@@ -230,7 +229,7 @@ func TestBodyHelp_SkeletonSanitizesInvisibleChars(t *testing.T) {
 // would vanish the moment help is actually rendered.
 func TestPrepareMethodHelp_KeepsBodyContract(t *testing.T) {
 	cmd := methodCmdWithBodyForTest(t)
-	if !PrepareMethodHelp(apicatalog.Catalog{}, cmd, nil) {
+	if !overlayRenderer(t, nil, nil, nil).PrepareMethodHelp(cmd) {
 		t.Fatal("PrepareMethodHelp must apply to a method command")
 	}
 	if !strings.Contains(cmd.Long, "Request body (--data") {

@@ -52,13 +52,13 @@
                   "type": "boolean",
                   "description": "是否返回 personal_status",
                   "required": false,
-                  "example": "false"
+                  "example": false
                 },
                 "include_description": {
                   "type": "boolean",
                   "description": "是否返回 description",
                   "required": false,
-                  "example": "false"
+                  "example": false
                 }
               }
             },
@@ -113,7 +113,8 @@
                     "icon_key": {
                       "type": "string",
                       "description": "状态图标标识",
-                      "required": false
+                      "required": false,
+                      "example": "GeneralInMeetingBusy"
                     },
                     "effective_interval": {
                       "type": "object",

@@ -10,6 +10,7 @@ import (
 
 	"github.com/larksuite/cli/errs"
 	internalauth "github.com/larksuite/cli/internal/auth"
+	"github.com/larksuite/cli/internal/cmdmeta"
 	"github.com/larksuite/cli/internal/cmdutil"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/errclass"
@@ -76,6 +77,7 @@ func TestRootErrorPresenterUsesDeclaredScopesForCanonicalPermissionRecovery(t *t
 	agenda := &cobra.Command{Use: "+agenda"}
 	root.AddCommand(calendar)
 	calendar.AddCommand(agenda)
+	cmdmeta.SetDeclaredScopes(agenda, map[string][]string{"user": {declaredScope}})
 	f.CurrentCommand = agenda
 
 	newSource := func(t *testing.T) (error, *errs.PermissionError) {
@@ -349,10 +351,7 @@ func factoryWithDeclaredServiceScope(t *testing.T) *cmdutil.Factory {
 	if err != nil {
 		t.Fatalf("open catalog snapshot: %v", err)
 	}
-	catalog, err := snapshot.FullCatalog()
-	if err != nil {
-		t.Fatalf("load full catalog: %v", err)
-	}
+	catalog := snapshot.Catalog()
 	f := &cmdutil.Factory{APICatalog: catalog, ResolvedIdentity: core.AsUser}
 	var target registry.CommandEntry
 	for _, entry := range registry.CollectCommandScopes(catalog, []string{"calendar"}, "user") {

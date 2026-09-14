@@ -37,14 +37,10 @@ func buildExecutabilityTree(t *testing.T) *cobra.Command {
 	if err != nil {
 		t.Fatal(err)
 	}
-	catalog, err := snapshot.FullCatalog()
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.APICatalog = catalog
+	f.APICatalog = snapshot.Catalog()
 	root := buildIntegrationRootCmd(t, f)
 	installUnknownSubcommandGuard(root)
-	installTipsHelpFunc(root, catalog, nil, nil, nil)
+	installTipsHelpFunc(root, &service.HelpRenderer{})
 	return root
 }
 
@@ -54,7 +50,7 @@ func domainAPIListings(t *testing.T, root *cobra.Command) map[string][]string {
 	t.Helper()
 	listings := map[string][]string{}
 	for _, domain := range root.Commands() {
-		if !service.PrepareDomainHelp(domain, nil) {
+		if !(&service.HelpRenderer{}).PrepareDomainHelp(domain) {
 			continue
 		}
 		if !strings.Contains(domain.Long, "API methods (") {

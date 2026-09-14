@@ -45,8 +45,10 @@ type ManifestServiceEntry struct {
 	SHA256   string `json:"sha256"`
 }
 
-// Snapshot is an immutable manifest paired with its backing filesystem.
-// Service bodies are read only when Catalog is called and are never cached.
+// Snapshot is an immutable manifest paired with its backing filesystem. It is
+// the apicatalog.Loader behind the embedded catalog: opening it reads only the
+// manifest, and a service body is validated and parsed the first time a
+// Catalog navigates into it.
 type Snapshot struct {
 	manifest Manifest
 	fs       fs.FS
@@ -92,52 +94,52 @@ func (s *Snapshot) ServiceNames() []string {
 	return names
 }
 
-// Catalog validates and parses only the requested service shards. Duplicate
-// names are collapsed so each selected shard is read at most once per call.
-func (s *Snapshot) Catalog(names ...string) (apicatalog.Catalog, error) {
-	selected := append([]string(nil), names...)
-	sort.Strings(selected)
-	selected = compactStrings(selected)
+// Names implements apicatalog.Loader from the manifest alone.
+func (s *Snapshot) Names() []string { return s.ServiceNames() }
 
-	services := make([]meta.Service, 0, len(selected))
-	for _, name := range selected {
-		entry, ok := s.manifestEntry(name)
-		if !ok {
-			cause := catalogIntegrityCause("requested service is not present in manifest")
-			return apicatalog.Catalog{}, serviceIntegrityError(name, "service file is missing", cause)
-		}
-
-		data, err := fs.ReadFile(s.fs, entry.File)
-		if err != nil {
-			return apicatalog.Catalog{}, serviceIntegrityError(name, "service file is missing", err)
-		}
-		if int64(len(data)) != entry.Size {
-			cause := catalogIntegrityCause("service file size does not match manifest")
-			return apicatalog.Catalog{}, serviceIntegrityError(name, "size mismatch", cause)
-		}
-		sum := sha256.Sum256(data)
-		if hex.EncodeToString(sum[:]) != entry.SHA256 {
-			cause := catalogIntegrityCause("service file sha256 does not match manifest")
-			return apicatalog.Catalog{}, serviceIntegrityError(name, "sha256 mismatch", cause)
-		}
-
-		var service meta.Service
-		if err := json.Unmarshal(data, &service); err != nil {
-			return apicatalog.Catalog{}, serviceIntegrityError(name, "invalid JSON", err)
-		}
-		if service.Name != name {
-			cause := catalogIntegrityCause("service body name does not match manifest")
-			return apicatalog.Catalog{}, serviceIntegrityError(name, "service name mismatch", cause)
-		}
-		services = append(services, service)
+// Load implements apicatalog.Loader: it validates one service shard against
+// its manifest entry and parses it. Failures are typed catalog-integrity
+// errors; a name absent from the manifest is apicatalog.ErrServiceNotFound.
+func (s *Snapshot) Load(name string) (meta.Service, error) {
+	entry, ok := s.manifestEntry(name)
+	if !ok {
+		return meta.Service{}, apicatalog.ErrServiceNotFound
 	}
 
-	return apicatalog.New(apicatalog.SourceEmbedded, services), nil
+	data, err := fs.ReadFile(s.fs, entry.File)
+	if err != nil {
+		return meta.Service{}, serviceIntegrityError(name, "service file is missing", err)
+	}
+	if int64(len(data)) != entry.Size {
+		cause := catalogIntegrityCause("service file size does not match manifest")
+		err := serviceIntegrityError(name, "size mismatch", cause)
+		if lineEndingsInflated(data, entry.Size) {
+			err = err.WithHint("the service file was checked out with CRLF line endings, usually by core.autocrlf; rebuild from a checkout that keeps LF (the repository's .gitattributes enforces this)")
+		}
+		return meta.Service{}, err
+	}
+	sum := sha256.Sum256(data)
+	if hex.EncodeToString(sum[:]) != entry.SHA256 {
+		cause := catalogIntegrityCause("service file sha256 does not match manifest")
+		return meta.Service{}, serviceIntegrityError(name, "sha256 mismatch", cause)
+	}
+
+	var service meta.Service
+	if err := decodeOne(data, &service, false); err != nil {
+		return meta.Service{}, serviceIntegrityError(name, "invalid JSON", err)
+	}
+	if service.Name != name {
+		cause := catalogIntegrityCause("service body name does not match manifest")
+		return meta.Service{}, serviceIntegrityError(name, "service name mismatch", cause)
+	}
+	return service, nil
 }
 
-// FullCatalog validates and parses every service shard in the snapshot.
-func (s *Snapshot) FullCatalog() (apicatalog.Catalog, error) {
-	return s.Catalog(s.ServiceNames()...)
+// Catalog returns a lazy navigation handle over every service in the
+// snapshot. No shard is read until it is navigated; callers that must fail
+// early for a corrupt shard use Catalog.Preload.
+func (s *Snapshot) Catalog() apicatalog.Catalog {
+	return apicatalog.NewLazy(apicatalog.SourceEmbedded, s)
 }
 
 func parseManifest(data []byte) (Manifest, error) {
@@ -149,7 +151,7 @@ func parseManifest(data []byte) (Manifest, error) {
 	var manifest Manifest
 	if raw, ok := fields["schema_version"]; ok {
 		if err := decodeOne(raw, &manifest.SchemaVersion, false); err != nil {
-			return Manifest{}, manifestIntegrityError("schema_version must be an integer", err)
+			return Manifest{}, manifestIntegrityError("invalid JSON", err)
 		}
 	}
 	if manifest.SchemaVersion != catalogSchemaVersion {
@@ -159,7 +161,6 @@ func parseManifest(data []byte) (Manifest, error) {
 			cause,
 		)
 	}
-
 	rawServices, ok := fields["services"]
 	if !ok {
 		cause := catalogIntegrityCause("services field is missing")
@@ -196,7 +197,6 @@ func parseManifest(data []byte) (Manifest, error) {
 		}
 		manifest.Services = append(manifest.Services, entry)
 	}
-
 	return manifest, nil
 }
 
@@ -237,6 +237,7 @@ func validateServiceFileSet(fsys fs.FS, entries []ManifestServiceEntry) error {
 
 func decodeOne(data []byte, target any, disallowUnknown bool) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
 	if disallowUnknown {
 		decoder.DisallowUnknownFields()
 	}
@@ -251,19 +252,6 @@ func decodeOne(data []byte, target any, disallowUnknown bool) error {
 		return err
 	}
 	return nil
-}
-
-func compactStrings(sorted []string) []string {
-	if len(sorted) == 0 {
-		return sorted
-	}
-	out := sorted[:1]
-	for _, value := range sorted[1:] {
-		if value != out[len(out)-1] {
-			out = append(out, value)
-		}
-	}
-	return out
 }
 
 func equalStrings(left, right []string) bool {
@@ -303,7 +291,7 @@ func catalogAccessError(message string, cause error) error {
 	).WithHint("run lark-cli update to restore the embedded catalog").WithCause(cause)
 }
 
-func serviceIntegrityError(name, reason string, cause error) error {
+func serviceIntegrityError(name, reason string, cause error) *errs.InternalError {
 	return errs.NewInternalError(
 		errs.SubtypeCatalogIntegrity,
 		`embedded catalog service "%s" failed integrity validation: %s`,
@@ -317,6 +305,15 @@ func safeServiceName(name string) string {
 		return name
 	}
 	return "unknown"
+}
+
+// lineEndingsInflated reports whether data is the manifest-sized file with
+// every newline rewritten as CRLF. That is what a checkout under
+// core.autocrlf produces, and it is worth naming because the size check alone
+// reads like a corrupted download.
+func lineEndingsInflated(data []byte, size int64) bool {
+	crlf := int64(bytes.Count(data, []byte("\r\n")))
+	return crlf > 0 && int64(len(data))-crlf == size
 }
 
 type catalogIntegrityCause string

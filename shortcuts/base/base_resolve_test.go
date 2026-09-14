@@ -4,6 +4,8 @@
 package base
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -269,6 +271,53 @@ func baseBlockListResolveStub(baseToken string, blocks ...map[string]interface{}
 	}
 }
 
+func TestBaseURLResolveBaseAppURL(t *testing.T) {
+	t.Run("with page and workspace coordinates", func(t *testing.T) {
+		factory, stdout, _ := newExecuteFactory(t)
+		err := runShortcutWithAuthTypes(t, BaseURLResolve, authTypes(), []string{
+			"+url-resolve",
+			"--url", "https://example.larkoffice.com/app/app_123?pre_pathname=%2Fbase%2Fworkspace%2Fws_123&pageId=pge_123",
+			"--as", "user",
+		}, factory, stdout)
+		if err != nil {
+			t.Fatalf("err=%v", err)
+		}
+
+		data := decodeBaseEnvelope(t, stdout)
+		if data["input_type"] != "baseapp_url" || data["resource_type"] != "baseapp" {
+			t.Fatalf("unexpected resource classification: %#v", data)
+		}
+		if data["app_token"] != "app_123" || data["workspace_token"] != "ws_123" || data["page_id"] != "pge_123" {
+			t.Fatalf("missing BaseApp coordinates: %#v", data)
+		}
+		hint, _ := data["hint"].(map[string]interface{})
+		if hint["next_step"] != nextStepBaseApp {
+			t.Fatalf("unexpected hint: %#v", hint)
+		}
+	})
+
+	t.Run("omits absent optional coordinates", func(t *testing.T) {
+		factory, stdout, _ := newExecuteFactory(t)
+		err := runShortcutWithAuthTypes(t, BaseURLResolve, authTypes(), []string{
+			"+url-resolve", "--url", "https://example.larkoffice.com/app/app_123", "--as", "user",
+		}, factory, stdout)
+		if err != nil {
+			t.Fatalf("err=%v", err)
+		}
+
+		data := decodeBaseEnvelope(t, stdout)
+		if data["app_token"] != "app_123" {
+			t.Fatalf("unexpected output: %#v", data)
+		}
+		if _, ok := data["workspace_token"]; ok {
+			t.Fatalf("workspace_token should be omitted: %#v", data)
+		}
+		if _, ok := data["page_id"]; ok {
+			t.Fatalf("page_id should be omitted: %#v", data)
+		}
+	})
+}
+
 func TestBaseURLResolveWikiURL(t *testing.T) {
 	t.Run("bitable", func(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
@@ -341,7 +390,7 @@ func TestBaseURLResolveWikiURL(t *testing.T) {
 		factory, stdout, reg := newExecuteFactory(t)
 		reg.Register(&httpmock.Stub{
 			Method: "GET",
-			URL:    "/open-apis/wiki/v2/spaces/get_node?token=wikdoc",
+			URL:    baseWikiNodeByTokenPath + "?token=wikdoc",
 			Body: map[string]interface{}{
 				"code": 0,
 				"data": map[string]interface{}{
@@ -357,12 +406,52 @@ func TestBaseURLResolveWikiURL(t *testing.T) {
 			t.Fatalf("err=%v, want non-Base validation error", err)
 		}
 	})
+
+	t.Run("classifies node_by_token errors", func(t *testing.T) {
+		for _, failure := range []struct {
+			code    int
+			subtype errs.Subtype
+		}{
+			{131012, errs.SubtypeNotFound},
+			{131013, errs.SubtypeInvalidParameters},
+			{131014, errs.SubtypeFailedPrecondition},
+			{131016, errs.SubtypeInvalidParameters},
+		} {
+			t.Run(fmt.Sprintf("code_%d", failure.code), func(t *testing.T) {
+				factory, stdout, reg := newExecuteFactory(t)
+				lookup := &httpmock.Stub{
+					Method:  "GET",
+					URL:     baseWikiNodeByTokenPath + "?token=wik123",
+					Headers: http.Header{"X-Tt-Logid": []string{"base-wiki-lookup-log"}},
+					Body:    map[string]interface{}{"code": failure.code, "msg": "lookup rejected"},
+				}
+				reg.Register(lookup)
+
+				err := runShortcutWithAuthTypes(t, BaseURLResolve, authTypes(), []string{
+					"+url-resolve", "--url", "https://example.larkoffice.com/wiki/wik123", "--as", "user",
+				}, factory, stdout)
+				problem, ok := errs.ProblemOf(err)
+				if !ok || problem.Category != errs.CategoryAPI || problem.Subtype != failure.subtype || problem.Code != failure.code || problem.Retryable {
+					t.Fatalf("error = %#v (%v), want terminal api/%s/%d", problem, err, failure.subtype, failure.code)
+				}
+				if problem.LogID != "base-wiki-lookup-log" || !strings.Contains(problem.Message, "lookup rejected") {
+					t.Fatalf("upstream metadata not preserved: %#v", problem)
+				}
+				if len(lookup.CapturedBodies) != 1 {
+					t.Fatalf("lookup calls = %d, want 1", len(lookup.CapturedBodies))
+				}
+				if stdout.Len() != 0 {
+					t.Fatalf("unexpected success output: %s", stdout)
+				}
+			})
+		}
+	})
 }
 
 func wikiBaseNodeStub(wikiToken, baseToken, title string) *httpmock.Stub {
 	return &httpmock.Stub{
 		Method: "GET",
-		URL:    "/open-apis/wiki/v2/spaces/get_node?token=" + wikiToken,
+		URL:    baseWikiNodeByTokenPath + "?token=" + wikiToken,
 		Body: map[string]interface{}{
 			"code": 0,
 			"data": map[string]interface{}{
@@ -373,6 +462,39 @@ func wikiBaseNodeStub(wikiToken, baseToken, title string) *httpmock.Stub {
 				},
 			},
 		},
+	}
+}
+
+func TestBaseWikiNodeLookupProblemPreservesCause(t *testing.T) {
+	for _, failure := range []struct {
+		code    int
+		subtype errs.Subtype
+	}{
+		{131012, errs.SubtypeNotFound},
+		{131013, errs.SubtypeInvalidParameters},
+		{131014, errs.SubtypeFailedPrecondition},
+		{131016, errs.SubtypeInvalidParameters},
+	} {
+		t.Run(fmt.Sprintf("code_%d", failure.code), func(t *testing.T) {
+			cause := errors.New("upstream sentinel")
+			upstream := errs.NewAPIError(errs.SubtypeUnknown, "lookup rejected").
+				WithCode(failure.code).
+				WithRetryable().
+				WithLogID("base-wiki-lookup-log").
+				WithCause(cause)
+
+			got := baseWikiNodeLookupProblem(upstream)
+			if !errors.Is(got, cause) {
+				t.Fatalf("errors.Is(got, cause) = false, want preserved cause")
+			}
+			problem, ok := errs.ProblemOf(got)
+			if !ok || problem.Subtype != failure.subtype || problem.Code != failure.code || problem.Retryable {
+				t.Fatalf("error = %#v (%v), want terminal api/%s/%d", problem, got, failure.subtype, failure.code)
+			}
+			if problem.LogID != "base-wiki-lookup-log" {
+				t.Fatalf("log_id = %q, want preserved upstream log ID", problem.LogID)
+			}
+		})
 	}
 }
 
@@ -397,7 +519,7 @@ func TestBaseURLResolveRecordShareURL(t *testing.T) {
 		recordData, _ := hint["record_data"].(map[string]interface{})
 		fields, _ := hint["fields"].(map[string]interface{})
 		nextStep, _ := hint["next_step"].(string)
-		if !strings.Contains(nextStep, "+record-upsert --base-token bas123 --table-id tbl123 --record-id rec123") || recordData["fld_name"] != "Alice" || fields["total"] != float64(2) {
+		if !strings.Contains(nextStep, `+record-batch-update --base-token bas123 --table-id tbl123 --json '{"update_records":{"rec123":{"<field_id>":<CellValue>}}}'`) || recordData["fld_name"] != "Alice" || fields["total"] != float64(2) {
 			t.Fatalf("unexpected hint: %#v", hint)
 		}
 	})
@@ -418,7 +540,7 @@ func TestBaseURLResolveRecordShareURL(t *testing.T) {
 		}
 		hint, _ := data["hint"].(map[string]interface{})
 		nextStep, _ := hint["next_step"].(string)
-		if !strings.Contains(nextStep, "+record-upsert --base-token bas123 --table-id tbl123 --record-id rec123") {
+		if !strings.Contains(nextStep, `+record-batch-update --base-token bas123 --table-id tbl123 --json '{"update_records":{"rec123":{"<field_id>":<CellValue>}}}'`) {
 			t.Fatalf("unexpected hint: %#v", hint)
 		}
 		if _, ok := hint["record_data"]; ok {
@@ -537,7 +659,7 @@ func TestBaseResolveHelpFlags(t *testing.T) {
 			shortcut:    "+url-resolve",
 			definition:  BaseURLResolve,
 			primaryFlag: "url",
-			primaryDesc: "Base/Wiki/record-share URL to resolve",
+			primaryDesc: "Base/BaseApp/Wiki/record-share URL to resolve",
 			aliasFlags:  []string{"query"},
 		},
 		{

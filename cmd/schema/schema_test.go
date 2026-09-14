@@ -28,10 +28,7 @@ func schemaTestFactory(t *testing.T, config *core.CliConfig) (*cmdutil.Factory, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.APICatalog, err = snapshot.FullCatalog()
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.APICatalog = snapshot.Catalog()
 	return f, out, errOut, in
 }
 
@@ -67,10 +64,9 @@ func TestSchemaCmd_APICatalogCompletionAndRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	catalog, err := snapshot.Catalog("drive")
-	if err != nil {
-		t.Fatal(err)
-	}
+	catalog := apicatalog.Filter(snapshot.Catalog(), func(svc meta.Service) (meta.Service, bool) {
+		return svc, svc.Name == "drive"
+	})
 	f, stdout, _, _ := cmdutil.TestFactory(t, nil)
 	f.APICatalog = catalog
 	cmd := NewCmdSchema(f, nil)
@@ -200,6 +196,43 @@ func TestSchemaCmd_LargeIntegerBoundStaysExact(t *testing.T) {
 	}
 	if strings.Contains(out, "9223372036854776000") {
 		t.Fatalf("schema output contains float64-rounded bound:\n%s", out)
+	}
+}
+
+func TestSchemaCmd_LargeIntegerExampleStaysExact(t *testing.T) {
+	f, stdout, _, _ := cmdutil.TestFactory(t, nil)
+	f.APICatalog = apicatalog.New(apicatalog.SourceEmbedded, []meta.Service{{
+		Name: "fixture",
+		Resources: map[string]meta.Resource{
+			"items": {
+				Methods: map[string]meta.Method{
+					"get": {
+						ID:         "items.get",
+						HTTPMethod: "GET",
+						Parameters: map[string]meta.Field{
+							"cursor": {
+								Type:     "integer",
+								Location: "query",
+								Example:  json.Number("7342342398472398471"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}})
+
+	cmd := NewCmdSchema(f, nil)
+	cmd.SetArgs([]string{"fixture.items.get", "--format", "json"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, `"example": 7342342398472398471`) {
+		t.Fatalf("schema output does not preserve exact large integer example:\n%s", out)
+	}
+	if strings.Contains(out, "7342342398472398848") {
+		t.Fatalf("schema output contains float64-rounded large integer example:\n%s", out)
 	}
 }
 
@@ -368,7 +401,7 @@ func TestSchemaCmd_UnknownMethod_TypedValidation(t *testing.T) {
 
 func TestResolveError_ShortcutPathPointsAtHelp(t *testing.T) {
 	var buf bytes.Buffer
-	err := runSchemaCatalog(&buf, []string{"im", "+messages-send"}, core.StrictModeOff, schemaTestCatalog(t), nil, "", nil)
+	err := runSchemaCatalog(&buf, []string{"im", "+messages-send"}, core.StrictModeOff, schemaTestCatalog(t), nil, nil, "", nil, nil)
 	if err == nil {
 		t.Fatal("a +shortcut path must not resolve")
 	}
@@ -389,7 +422,7 @@ func TestResolveError_ShortcutPathPointsAtHelp(t *testing.T) {
 
 func TestResolveError_UnknownResourceAlsoPointsAtSchemaIndex(t *testing.T) {
 	var buf bytes.Buffer
-	err := runSchemaCatalog(&buf, []string{"mail", "nonexist"}, core.StrictModeOff, schemaTestCatalog(t), nil, "", nil)
+	err := runSchemaCatalog(&buf, []string{"mail", "nonexist"}, core.StrictModeOff, schemaTestCatalog(t), nil, nil, "", nil, nil)
 	if err == nil {
 		t.Fatal("an unknown resource must not resolve")
 	}
@@ -405,7 +438,7 @@ func TestResolveError_UnknownResourceAlsoPointsAtSchemaIndex(t *testing.T) {
 
 func TestResolveError_SanitizesEchoedInput(t *testing.T) {
 	var buf bytes.Buffer
-	err := runSchemaCatalog(&buf, []string{"im", "+bad\x1b[31mname"}, core.StrictModeOff, schemaTestCatalog(t), nil, "", nil)
+	err := runSchemaCatalog(&buf, []string{"im", "+bad\x1b[31mname"}, core.StrictModeOff, schemaTestCatalog(t), nil, nil, "", nil, nil)
 	if err == nil {
 		t.Fatal("must not resolve")
 	}
@@ -420,7 +453,7 @@ func TestResolveError_SanitizesEchoedInput(t *testing.T) {
 // reorder how the rejection reads.
 func TestResolveError_SanitizesShortcutMessageToo(t *testing.T) {
 	var buf bytes.Buffer
-	err := runSchemaCatalog(&buf, []string{"im", "+bad‮name"}, core.StrictModeOff, schemaTestCatalog(t), nil, "", nil)
+	err := runSchemaCatalog(&buf, []string{"im", "+bad‮name"}, core.StrictModeOff, schemaTestCatalog(t), nil, nil, "", nil, nil)
 	if err == nil {
 		t.Fatal("must not resolve")
 	}
@@ -442,7 +475,7 @@ func TestResolveError_SanitizesShortcutMessageToo(t *testing.T) {
 func TestResolveError_ExistingCommandWithoutAPIPointsAtHelp(t *testing.T) {
 	var buf bytes.Buffer
 	exists := func(name string) bool { return name == "docs" }
-	err := runSchemaCatalog(&buf, []string{"docs"}, core.StrictModeOff, schemaTestCatalog(t), nil, "", exists)
+	err := runSchemaCatalog(&buf, []string{"docs"}, core.StrictModeOff, schemaTestCatalog(t), nil, nil, "", exists, nil)
 	if err == nil {
 		t.Fatal("a shortcut-only domain has no API methods and must not resolve")
 	}
@@ -507,7 +540,7 @@ func TestSchemaSurfaceProjectionFiltersExecutionListingAndCompletion(t *testing.
 	// methods. Both services survive projection here because each keeps at least
 	// one visible method.
 	var out bytes.Buffer
-	if err := runSchemaCatalog(&out, nil, core.StrictModeOff, catalog, visible, "", nil); err != nil {
+	if err := runSchemaCatalog(&out, nil, core.StrictModeOff, catalog, nil, visible, "", nil, nil); err != nil {
 		t.Fatalf("broad schema failed: %v", err)
 	}
 	var index struct {
@@ -535,7 +568,7 @@ func TestSchemaSurfaceProjectionFiltersExecutionListingAndCompletion(t *testing.
 	// A concealed method can only surface in the method index, so that is where
 	// listing-side projection has to be asserted.
 	out.Reset()
-	if err := runSchemaCatalog(&out, []string{"mail"}, core.StrictModeOff, catalog, visible, "", nil); err != nil {
+	if err := runSchemaCatalog(&out, []string{"mail"}, core.StrictModeOff, catalog, nil, visible, "", nil, nil); err != nil {
 		t.Fatalf("mail method index failed: %v", err)
 	}
 	var methodIndex struct {
@@ -563,8 +596,10 @@ func TestSchemaSurfaceProjectionFiltersExecutionListingAndCompletion(t *testing.
 		[]string{"mail", "user_mailbox", "messages", "list"},
 		core.StrictModeOff,
 		catalog,
+		nil,
 		visible,
 		"",
+		nil,
 		nil,
 	)
 	if err == nil {
@@ -633,10 +668,10 @@ func TestSchemaSurfaceProjectionPreservesDefaultAndDeniedVisibleCatalog(t *testi
 	allVisible := func([]string) bool { return true }
 
 	var defaultOut, projectedOut bytes.Buffer
-	if err := runSchemaCatalog(&defaultOut, nil, core.StrictModeOff, catalog, nil, "", nil); err != nil {
+	if err := runSchemaCatalog(&defaultOut, nil, core.StrictModeOff, catalog, nil, nil, "", nil, nil); err != nil {
 		t.Fatalf("default schema failed: %v", err)
 	}
-	if err := runSchemaCatalog(&projectedOut, nil, core.StrictModeOff, catalog, allVisible, "", nil); err != nil {
+	if err := runSchemaCatalog(&projectedOut, nil, core.StrictModeOff, catalog, nil, allVisible, "", nil, nil); err != nil {
 		t.Fatalf("all-visible schema failed: %v", err)
 	}
 	if defaultOut.String() != projectedOut.String() {

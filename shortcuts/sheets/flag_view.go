@@ -134,6 +134,21 @@ func (m mapFlagView) lookupRawWithKey(name string) (string, interface{}, bool) {
 			return key, v, true
 		}
 	}
+	canonicalName := strings.ReplaceAll(name, "_", "-")
+	aliases := make([]string, 0, len(commandFlagAliases[m.command]))
+	for alias, target := range commandFlagAliases[m.command] {
+		if strings.ReplaceAll(target, "_", "-") == canonicalName {
+			aliases = append(aliases, alias)
+		}
+	}
+	slices.Sort(aliases)
+	for _, alias := range aliases {
+		for _, key := range []string{alias, strings.ReplaceAll(alias, "-", "_")} {
+			if v, ok := m.raw[key]; ok {
+				return key, v, true
+			}
+		}
+	}
 	return "", nil, false
 }
 
@@ -349,6 +364,44 @@ func (m *mapFlagView) normalizeAndValidateEnums() error {
 		return fmt.Errorf("%s", message) //nolint:forbidigo // intermediate error; batch dispatcher adds typed operations context
 	}
 	return nil
+}
+
+// normalizeRangeSheetPrefix mirrors the standalone chainRangeSheetPrefix
+// rewrite (range_sheet_prefix.go) for the map-backed paths, +batch-update
+// sub-ops and +cells-set --writes items: one that named its sheet only inside
+// "range" ("Sheet1!A1:D20") gets sheet_name filled in and the bare range left
+// behind, so every form accepts the same input.
+//
+// The derived selector is written under the underscore key the sub-op input
+// vocabulary uses, and left as the only spelling of it; lookupRaw is
+// separator-tolerant, so a translator asking for "sheet-name" finds it anyway.
+func (m *mapFlagView) normalizeRangeSheetPrefix() {
+	if !rangeSheetPrefixApplies(m.command) {
+		return
+	}
+	if strings.TrimSpace(m.Str("sheet-id")) != "" || strings.TrimSpace(m.Str("sheet-name")) != "" {
+		return
+	}
+	rangeKey, raw, ok := m.lookupRawWithKey(rangeSheetPrefixFlag)
+	if !ok {
+		return
+	}
+	value, isString := raw.(string)
+	if !isString {
+		return
+	}
+	sheet, rest, ok := splitRangeSheetPrefix(value)
+	if !ok {
+		return
+	}
+	m.raw[rangeKey] = rest
+	// Drop the hyphen spelling before writing the underscore one. An item may
+	// carry both when their values agree (normalizeSubOpInputKeys keeps a
+	// harmless duplicate rather than erroring), and lookupRaw answers with the
+	// first spelling it finds — so an empty "sheet-name" left in place would
+	// shadow the selector just derived and fail as "no sheet selector".
+	delete(m.raw, "sheet-name")
+	m.raw["sheet_name"] = sheet
 }
 
 // jsonTypeName names the JSON kind of a value decoded by encoding/json, for

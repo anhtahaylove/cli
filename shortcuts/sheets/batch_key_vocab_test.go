@@ -27,6 +27,59 @@ func TestBatchOperations_PreflightCellBudgetBeforeMaterialization(t *testing.T) 
 	requireValidation(t, err, "over the 200000-cell safety cap")
 }
 
+// TestBatchOperations_PreflightBudgetsEnvelopedCells is the same guard on the
+// typed-cells carrier, in the habitual shape: the payload arrives wrapped in a
+// {"cells": …} envelope, which the preflight has to see through — it runs
+// before the translator's normalizers, and a shape it scores as zero cells is
+// one that materializes with no budget applied at all.
+func TestBatchOperations_PreflightBudgetsEnvelopedCells(t *testing.T) {
+	t.Parallel()
+	row := make([]interface{}, maxStampMatrixCells/2+1)
+	for i := range row {
+		row[i] = map[string]interface{}{"value": 1}
+	}
+	ops := []interface{}{}
+	for i := 0; i < 2; i++ {
+		ops = append(ops, subOp("+cells-set", map[string]interface{}{
+			"sheet_name": "S1",
+			"range":      "A1:A1",
+			"cells":      map[string]interface{}{"cells": []interface{}{row}},
+		}))
+	}
+	_, err := translateBatchOperations(ops, testToken)
+	requireValidation(t, err, "over the 200000-cell safety cap")
+}
+
+// TestEstimatedBatchOpCells_CountsAcceptedCellsShapes pins the preflight
+// estimator against every --cells shape the translator accepts. It runs before
+// any normalizer, so a shape it fails to recognize scores zero and materializes
+// outside the budget — which is exactly what the preflight exists to prevent.
+func TestEstimatedBatchOpCells_CountsAcceptedCellsShapes(t *testing.T) {
+	t.Parallel()
+	row := []interface{}{map[string]interface{}{"value": 1}, map[string]interface{}{"value": 2}}
+	matrix := []interface{}{row, row}
+	cases := []struct {
+		name  string
+		input map[string]interface{}
+		want  int64
+	}{
+		{"wire shape", map[string]interface{}{"range": "A1:B2", "cells": matrix}, 4},
+		{"cells envelope", map[string]interface{}{"range": "A1:B2", "cells": map[string]interface{}{"cells": matrix}}, 4},
+		{"values alias", map[string]interface{}{"range": "A1:B2", "values": matrix}, 4},
+		{"lone cell object", map[string]interface{}{"range": "A1", "cells": map[string]interface{}{"value": 1}}, 1},
+		{"scalar rows", map[string]interface{}{"range": "A1:B2", "cells": []interface{}{[]interface{}{1, 2}}}, 2},
+		{"malformed stays zero", map[string]interface{}{"range": "A1:B2", "cells": "A1"}, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := estimatedBatchOpCells(subOp("+cells-set", tc.input)); got != tc.want {
+				t.Errorf("estimatedBatchOpCells = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 // off-vocabulary sub-op input key must error with a did-you-mean instead of
 // being silently ignored (silent ignore surfaced as misleading "missing
 // required flag" errors — the top batch error cluster in eval traces).
@@ -59,14 +112,28 @@ func TestBatchOp_UnknownInputKeyRejected(t *testing.T) {
 		requireValidation(t, err, `unknown input key "dry_run"`)
 	})
 
-	t.Run("reserved locator in hyphen form still rejected", func(t *testing.T) {
+	t.Run("reserved locators are ignored and top-level token wins", func(t *testing.T) {
 		t.Parallel()
-		_, err := translateBatchOp(subOp("+cells-clear", map[string]interface{}{
+		translated, err := translateBatchOp(subOp("+cells-clear", map[string]interface{}{
 			"sheet_name":        "S1",
 			"range":             "A1:B2",
 			"spreadsheet-token": "shtXXX",
+			"excel_id":          "shtYYY",
+			"url":               "https://example.invalid/sheets/shtZZZ",
 		}), testToken, 0)
-		requireValidation(t, err, "do not pass input.spreadsheet-token")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		input := translated["input"].(map[string]interface{})
+		if input["excel_id"] != testToken {
+			t.Fatalf("excel_id = %v, want top-level token %q", input["excel_id"], testToken)
+		}
+		if _, has := input["spreadsheet_token"]; has {
+			t.Fatalf("spreadsheet_token should be dropped: %#v", input)
+		}
+		if _, has := input["url"]; has {
+			t.Fatalf("url should be dropped: %#v", input)
+		}
 	})
 }
 
@@ -221,20 +288,46 @@ func TestCellsSetInput_MatrixPrecheck(t *testing.T) {
 			"+cells-clear",
 		},
 		{
-			"row count mismatch",
-			map[string]interface{}{"sheet_name": "S1", "range": "A1:B3",
-				"cells": []interface{}{
-					[]interface{}{map[string]interface{}{"value": "a"}, map[string]interface{}{"value": "b"}},
-				}},
-			"has 1 rows but --range \"A1:B3\" spans 3 rows",
-		},
-		{
-			"column count mismatch",
+			// Overflow, not underflow: a payload that FITS inside the stated
+			// range is narrowed to it (fitCellsRange), so what the precheck
+			// still owns is a payload with nowhere to go.
+			"row count overflow",
 			map[string]interface{}{"sheet_name": "S1", "range": "A1:B1",
 				"cells": []interface{}{
-					[]interface{}{map[string]interface{}{"value": "a"}},
+					[]interface{}{map[string]interface{}{"value": "a"}, map[string]interface{}{"value": "b"}},
+					[]interface{}{map[string]interface{}{"value": "c"}, map[string]interface{}{"value": "d"}},
 				}},
-			"has 1 columns but --range \"A1:B1\" spans 2 columns",
+			"--cells is 2 rows × 2 columns but --range \"A1:B1\" spans 1 rows × 2 columns",
+		},
+		{
+			"column count overflow",
+			map[string]interface{}{"sheet_name": "S1", "range": "A1:A1",
+				"cells": []interface{}{
+					[]interface{}{map[string]interface{}{"value": "a"}, map[string]interface{}{"value": "b"}},
+					[]interface{}{map[string]interface{}{"value": "c"}, map[string]interface{}{"value": "d"}},
+				}},
+			"--cells is 2 rows × 2 columns but --range \"A1:A1\" spans 1 rows × 1 columns",
+		},
+		{
+			// Both axes off used to cost two round trips: rows failed first,
+			// and the fixed payload came straight back on columns.
+			"both axes report together, with the range that fits the payload",
+			map[string]interface{}{"sheet_name": "S1", "range": "B2:C3",
+				"cells": []interface{}{
+					[]interface{}{map[string]interface{}{"value": "a"}, map[string]interface{}{"value": "b"}, map[string]interface{}{"value": "c"}},
+					[]interface{}{map[string]interface{}{"value": "d"}, map[string]interface{}{"value": "e"}, map[string]interface{}{"value": "f"}},
+					[]interface{}{map[string]interface{}{"value": "g"}, map[string]interface{}{"value": "h"}, map[string]interface{}{"value": "i"}},
+				}},
+			"write this payload to --range \"B2:D4\"",
+		},
+		{
+			"ragged rows are their own bug, not a range mismatch",
+			map[string]interface{}{"sheet_name": "S1", "range": "A1:B2",
+				"cells": []interface{}{
+					[]interface{}{map[string]interface{}{"value": "a"}, map[string]interface{}{"value": "b"}},
+					[]interface{}{map[string]interface{}{"value": "c"}},
+				}},
+			"--cells[1] has 1 columns but --cells[0] has 2",
 		},
 		{
 			"matching matrix passes",
@@ -246,12 +339,15 @@ func TestCellsSetInput_MatrixPrecheck(t *testing.T) {
 			"",
 		},
 		{
-			"bare single-cell range enforces the 1x1 match (07-21: server rejects anchors too)",
-			map[string]interface{}{"sheet_name": "S1", "range": "A1",
+			// A stated extent that disagrees with the payload is still a
+			// mismatch — only a bare anchor infers (see
+			// TestCellsSetInput_AnchorRangeExpands).
+			"explicit 1x1 range still enforces the match",
+			map[string]interface{}{"sheet_name": "S1", "range": "A1:A1",
 				"cells": []interface{}{
 					[]interface{}{map[string]interface{}{"value": "a"}, map[string]interface{}{"value": "b"}},
 				}},
-			"has 2 columns but --range \"A1\" spans 1 columns",
+			"--cells is 1 rows × 2 columns but --range \"A1:A1\" spans 1 rows × 1 columns",
 		},
 		{
 			"single-cell range with a single cell passes",
@@ -272,7 +368,14 @@ func TestCellsSetInput_MatrixPrecheck(t *testing.T) {
 				}
 				return
 			}
-			requireValidation(t, err, tc.wantContains)
+			ve := requireValidation(t, err, tc.wantContains)
+			// The precheck runs inside a batch sub-op, so the attribution is
+			// the flag the CALLER actually passed — --operations, with the
+			// sub-op's own --cells named in the message. A regression can keep
+			// the rendered text and lose either half.
+			if ve.Param != "--operations" {
+				t.Errorf("Param = %q, want %q", ve.Param, "--operations")
+			}
 		})
 	}
 }

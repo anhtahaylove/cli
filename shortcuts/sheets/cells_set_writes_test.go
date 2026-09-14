@@ -4,9 +4,30 @@
 package sheets
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
+
+// firstWriteOpInput decodes a --writes dry-run down to the tool input of its
+// first fanned-out set_cell_range operation, so tests assert the fields that
+// reach the wire instead of substrings of the rendered envelope.
+func firstWriteOpInput(t *testing.T, stdout string) map[string]interface{} {
+	t.Helper()
+	ops, _ := decodeToolInput(t, decodeDryRunFirstCall(t, stdout), "batch_update")["operations"].([]interface{})
+	if len(ops) == 0 {
+		t.Fatalf("batch_update carried no operations:\n%s", stdout)
+	}
+	op, _ := ops[0].(map[string]interface{})
+	if got := op["tool_name"]; got != "set_cell_range" {
+		t.Fatalf("operations[0].tool_name = %v, want set_cell_range", got)
+	}
+	in, _ := op["input"].(map[string]interface{})
+	if in == nil {
+		t.Fatalf("operations[0] has no input: %#v", op)
+	}
+	return in
+}
 
 // TestCellsSetWrites pins the --writes plural form: scattered (cross-sheet)
 // regions fan into ONE atomic batch_update, each item self-carrying its
@@ -44,6 +65,57 @@ func TestCellsSetWrites(t *testing.T) {
 		requireValidation(t, err, "sheet-id or --sheet-name")
 	})
 
+	t.Run("item names its sheet only in range", func(t *testing.T) {
+		t.Parallel()
+		// The third entry point for a sheet-prefixed range: --writes builds its
+		// own per-item flag view, so it needs the rewrite the standalone command
+		// (cobra PreRunE) and the +batch-update sub-op each carry — otherwise the
+		// same item that translates as a sub-op dies on the selector check here.
+		stdout, _, err := writes(`[{"range":"Sheet1!A1","cells":[[{"value":"x"}]]}]`)
+		if err != nil {
+			t.Fatalf("item with a sheet-prefixed range must translate, got: %v", err)
+		}
+		in := firstWriteOpInput(t, stdout)
+		if got := in["sheet_name"]; got != "Sheet1" {
+			t.Errorf("sheet_name = %v, want Sheet1", got)
+		}
+		if got := in["range"]; got != "A1" {
+			t.Errorf("range = %v, want A1 (the prefix belongs in the selector)", got)
+		}
+	})
+
+	// The two shapes +batch-update sub-ops accept: an item may spell the
+	// payload "values", or wrap it in the {"cells": …} envelope a payload
+	// generator produces. Both are rewritten before the writes array is
+	// schema-validated, so the same item translates on either path.
+	t.Run("item payload in a habitual shape", func(t *testing.T) {
+		t.Parallel()
+		for _, tc := range []struct{ name, items string }{
+			{"values alias", `[{"sheet_name":"S1","range":"A1","values":[["x"]]}]`},
+			{"cells envelope", `[{"sheet_name":"S1","range":"A1","cells":{"cells":[[{"value":"x"}]]}}]`},
+			{"bare scalar matrix", `[{"sheet_name":"S1","range":"A1","cells":[["x"]]}]`},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				stdout, _, err := writes(tc.items)
+				if err != nil {
+					t.Fatalf("item must translate the same as a +batch-update sub-op, got: %v", err)
+				}
+				in := firstWriteOpInput(t, stdout)
+				cells, _ := json.Marshal(in["cells"])
+				if string(cells) != `[[{"value":"x"}]]` {
+					t.Errorf("cells = %s, want [[{\"value\":\"x\"}]]", cells)
+				}
+			})
+		}
+	})
+
+	t.Run("item spelling the payload twice is a conflict", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := writes(`[{"sheet_name":"S1","range":"A1","values":[["v"]],"cells":[[{"value":"c"}]]}]`)
+		requireValidation(t, err, "conflicting values")
+	})
+
 	t.Run("top-level sheet selector rejected with prescription", func(t *testing.T) {
 		t.Parallel()
 		_, _, err := writes(`[{"sheet_name":"S1","range":"A1","cells":[[{"value":"x"}]]}]`,
@@ -63,7 +135,7 @@ func TestCellsSetWrites(t *testing.T) {
 		// Both items pass the --writes schema (range+cells present) but fail
 		// deeper: item 0 a matrix mismatch, item 1 a missing sheet selector.
 		_, _, err := writes(`[
-			{"sheet_name":"S1","range":"A1:B2","cells":[[{"value":"x"}]]},
+			{"sheet_name":"S1","range":"A1:A1","cells":[[{"value":"x"},{"value":"z"}]]},
 			{"range":"C1","cells":[[{"value":"y"}]]}
 		]`)
 		ve := requireValidation(t, err, "--writes has 2 issues")
@@ -71,6 +143,15 @@ func TestCellsSetWrites(t *testing.T) {
 			if !strings.Contains(ve.Message, want) {
 				t.Fatalf("message %q missing %q", ve.Message, want)
 			}
+		}
+		// The fold re-attributes to the outer flag and keeps the first inner
+		// issue as the cause; rendered text alone would not notice losing
+		// either.
+		if ve.Param != "--writes" {
+			t.Errorf("Param = %q, want %q", ve.Param, "--writes")
+		}
+		if ve.Cause == nil {
+			t.Error("Cause = nil, want the first inner issue preserved")
 		}
 	})
 
@@ -155,5 +236,45 @@ func TestCellsSetWrites(t *testing.T) {
 		if !strings.Contains(ve.Hint, "+styles-put") || !strings.Contains(ve.Hint, "cell_styles") {
 			t.Fatalf("want the styles-put layering hint, got hint=%q", ve.Hint)
 		}
+	})
+}
+
+// TestCellsSet_RangeNarrowedToPayload pins the narrowing: a payload that fits
+// inside the stated range is written at the same anchor, sized to itself,
+// and the difference is reported rather than silently applied.
+func TestCellsSet_RangeNarrowedToPayload(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name, stated, want string
+		cells              string
+	}{
+		{"a title against the range it will occupy once merged", "A1:D1", "A1:A1", `[[{"value":"标题"}]]`},
+		{"a block smaller on both axes", "A1:D4", "A1:B2", `[[{"value":1},{"value":2}],[{"value":3},{"value":4}]]`},
+		{"an exact fit is untouched", "A1:B1", "A1:B1", `[[{"value":1},{"value":2}]]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			stdout, _, err := runShortcutCapturingErr(t, CellsSet, []string{
+				"--url", testURL, "--sheet-name", "s", "--range", tc.stated,
+				"--cells", tc.cells, "--dry-run",
+			})
+			if err != nil {
+				t.Fatalf("payload fits, so it should be accepted: %v", err)
+			}
+			if !strings.Contains(strings.ReplaceAll(stdout, `\"`, `"`), `"range":"`+tc.want+`"`) {
+				t.Errorf("write should cover %s, got %q", tc.want, stdout)
+			}
+		})
+	}
+
+	t.Run("a payload with nowhere to go is still rejected", func(t *testing.T) {
+		t.Parallel()
+		// Growing the range would write over cells nobody named.
+		_, _, err := runShortcutCapturingErr(t, CellsSet, []string{
+			"--url", testURL, "--sheet-name", "s", "--range", "A1:A1",
+			"--cells", `[[{"value":1},{"value":2}]]`, "--dry-run",
+		})
+		requireValidation(t, err, `--range "A1:A1" spans`)
 	})
 }
