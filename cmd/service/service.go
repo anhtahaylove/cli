@@ -103,6 +103,10 @@ func registerServiceWithContext(ctx context.Context, parent *cobra.Command, svc 
 			// would only duplicate it while naming no method to call. Hiding is
 			// listing-only — `lark-cli im chat.members --help` still resolves.
 			resCmd.Hidden = true
+			// Every level needs it, not just the domain: a nested resource's own
+			// children are hidden by this same loop, so completing only at the
+			// domain would strip the deeper groups the walk still registers.
+			resCmd.ValidArgsFunction = completeResourceGroups
 		}
 		resCmd.AddCommand(buildMethodCommand(ctx, f, newMethodCommandSpec(ref), nil, parent.PersistentFlags()))
 	}

@@ -1395,3 +1395,65 @@ func TestRegisterService_ResourceDescriptionReachesCommand(t *testing.T) {
 		t.Errorf("resource without description = %q, want the verb list %q", noDesc.Short, "list")
 	}
 }
+
+// Nested resources are a shape the metadata model and apicatalog's walk both
+// support (meta.Resource carries its own Resources, and walkResources recurses
+// through them), and registerService builds one command per path segment. No
+// committed service uses more than one segment today, so the fixture supplies
+// the nesting: completing only at the domain would leave every intermediate
+// group uncompletable the moment a catalog does.
+func TestCompleteResourceGroups_ReachesNestedResources(t *testing.T) {
+	parent := &cobra.Command{Use: "root"}
+	svc := meta.ServiceFromMap(map[string]interface{}{
+		"name":        "fixture",
+		"description": "Fixture API",
+		"servicePath": "/open-apis/fixture/v1",
+		"resources": map[string]interface{}{
+			"outer": map[string]interface{}{
+				"resources": map[string]interface{}{
+					"inner": map[string]interface{}{
+						"methods": map[string]interface{}{
+							"get": map[string]interface{}{"httpMethod": "GET", "description": "Get one."},
+						},
+					},
+				},
+			},
+		},
+	})
+	registerService(parent, svc, &cmdutil.Factory{})
+
+	domain, _, err := parent.Find([]string{"fixture"})
+	if err != nil {
+		t.Fatalf("fixture domain not registered: %v", err)
+	}
+	if domain.ValidArgsFunction == nil {
+		t.Fatal("domain command must complete its hidden resource groups")
+	}
+	comps, _ := domain.ValidArgsFunction(domain, nil, "")
+	if !hasCompletion(comps, "outer") {
+		t.Fatalf("domain completion lost the outer resource: %v", comps)
+	}
+
+	outer, _, err := parent.Find([]string{"fixture", "outer"})
+	if err != nil {
+		t.Fatalf("outer resource not registered: %v", err)
+	}
+	if outer.ValidArgsFunction == nil {
+		t.Fatal("an intermediate resource must complete its own hidden children")
+	}
+	nested, _ := outer.ValidArgsFunction(outer, nil, "")
+	if !hasCompletion(nested, "inner") {
+		t.Fatalf("nested completion lost the inner resource: %v", nested)
+	}
+}
+
+// hasCompletion reports whether name appears as a completion candidate; Cobra
+// candidates carry a tab-separated description.
+func hasCompletion(comps []string, name string) bool {
+	for _, c := range comps {
+		if c == name || strings.HasPrefix(c, name+"\t") {
+			return true
+		}
+	}
+	return false
+}
