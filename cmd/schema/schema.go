@@ -491,13 +491,13 @@ func resolveError(err error, parts []string, commandExists func(string) bool) er
 			WithHint("Available: %s; run `lark-cli --help` to list every command, including the domains that only provide +shortcuts",
 				strings.Join(re.Candidates, ", "))
 	case apicatalog.ErrResource:
-		return errs.NewValidationError(errs.SubtypeInvalidArgument, "Unknown resource: %s", re.Subject).
+		return errs.NewValidationError(errs.SubtypeInvalidArgument, "Unknown resource: %s", safeSeg(re.Subject)).
 			WithHint("Available: %s%s", strings.Join(re.Candidates, ", "), indexHint)
 	case apicatalog.ErrMethod:
-		return errs.NewValidationError(errs.SubtypeInvalidArgument, "Unknown method: %s", re.Subject).
+		return errs.NewValidationError(errs.SubtypeInvalidArgument, "Unknown method: %s", safeSeg(re.Subject)).
 			WithHint("Available: %s%s", strings.Join(re.Candidates, ", "), indexHint)
 	case apicatalog.ErrPath:
-		return errs.NewValidationError(errs.SubtypeInvalidArgument, "Unknown path: %s", re.Subject).
+		return errs.NewValidationError(errs.SubtypeInvalidArgument, "Unknown path: %s", safeSeg(re.Subject)).
 			WithHint("Method %q exists but the trailing segments %q do not resolve", re.Method, re.Trailing)
 	}
 	return err

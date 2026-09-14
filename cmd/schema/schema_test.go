@@ -469,6 +469,56 @@ func TestResolveError_SanitizesShortcutMessageToo(t *testing.T) {
 	}
 }
 
+// The shortcut and service branches were sanitized from the start; the resource,
+// method and path rejections echoed their subject raw. Every branch shares one
+// envelope that an agent parses, so each has to reach it through the same
+// whitelist — a bidi override surviving in any one of them can reorder how the
+// whole rejection reads.
+//
+// The parts are passed pre-split, exactly as apicatalog.ParsePath would hand
+// them over, because a single dotted argument resolves as a service name and
+// would test the service branch instead — which was never the unsanitized one.
+// wantPrefix pins which branch each case actually reaches, so the test cannot
+// silently drift back onto an already-safe path.
+func TestResolveError_SanitizesEveryRejectedSubject(t *testing.T) {
+	const bidi = "\u202e"
+	for _, tc := range []struct {
+		name       string
+		parts      []string
+		wantPrefix string
+	}{
+		{"resource", []string{"im", "chat" + bidi + "members", "get"}, "Unknown resource:"},
+		{"method", []string{"im", "chats", "ge" + bidi + "t"}, "Unknown method:"},
+		{"control in resource", []string{"im", "chat\x1b[31mmembers", "get"}, "Unknown resource:"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := runSchemaCatalog(&buf, tc.parts, core.StrictModeOff, schemaTestCatalog(t), nil, nil, "", nil, nil)
+			if err == nil {
+				t.Fatal("must not resolve")
+			}
+			problem, ok := errs.ProblemOf(err)
+			if !ok {
+				t.Fatal("error must carry a problem envelope")
+			}
+			if !strings.HasPrefix(problem.Message, tc.wantPrefix) {
+				t.Fatalf("case reached the wrong branch: message %q, want prefix %q", problem.Message, tc.wantPrefix)
+			}
+			for _, field := range []struct{ label, text string }{
+				{"message", problem.Message},
+				{"hint", problem.Hint},
+			} {
+				if strings.Contains(field.text, bidi) {
+					t.Errorf("%s must not echo bidi controls, got %q", field.label, field.text)
+				}
+				if strings.Contains(field.text, "\x1b") {
+					t.Errorf("%s must not echo control characters, got %q", field.label, field.text)
+				}
+			}
+		})
+	}
+}
+
 // A name that is absent from the API catalog but present in the command tree —
 // a +shortcut-only domain, or a CLI command like `auth` — must not be called
 // unknown, and the rejection must point back at the help tree.
