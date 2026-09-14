@@ -2221,7 +2221,14 @@ def main() -> None:
                     **thumbnail_result,
                 }
             )
-    except (LarkCliError, KeyError, TypeError, ValueError) as exc:
+        report = success_envelope(results, thumbnail_results)
+        manifest_path = thumbnail_root / "quality_manifest.json"
+        report["data"]["thumbnail_fetch"]["manifest_path"] = str(manifest_path)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except (LarkCliError, KeyError, OSError, TypeError, ValueError) as exc:
         print(
             json.dumps(
                 {
@@ -2242,11 +2249,6 @@ def main() -> None:
         )
         raise SystemExit(1) from exc
 
-    report = success_envelope(results, thumbnail_results)
-    manifest_path = thumbnail_root / "quality_manifest.json"
-    report["data"]["thumbnail_fetch"]["manifest_path"] = str(manifest_path)
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     output = report if getattr(args, "verbose", False) else compact_report(report)
     print(json.dumps(output, ensure_ascii=False, indent=2))
     exit_code = report_exit_code(report)
