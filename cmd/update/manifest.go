@@ -16,12 +16,11 @@ import (
 func runManifestUpdate(ctx context.Context, opts *UpdateOptions, src distribution.Source) error {
 	streams := opts.Factory.IOStreams
 	current := currentVersion()
-	manifest, err := src.FetchManifest(ctx)
+	manifest, err := internalupdate.FetchManifest(ctx, src)
 	if err != nil {
 		return reportDistributionError(opts, err)
 	}
 	target := manifest.Version
-	internalupdate.StoreTarget(src, target)
 	if opts.Check {
 		return reportManifestStatus(opts, current, target, false)
 	}

@@ -179,7 +179,8 @@ func TestManifestArtifactProtocolFailureUsesNetworkTaxonomy(t *testing.T) {
 func TestManifestUpdateRepairsSkillsWhenBinaryMatches(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HOME", root)
-	t.Setenv("LARKSUITE_CLI_CONFIG_DIR", filepath.Join(root, "config"))
+	configDir := filepath.Join(root, "config")
+	t.Setenv("LARKSUITE_CLI_CONFIG_DIR", configDir)
 	var archive bytes.Buffer
 	writer := zip.NewWriter(&archive)
 	entry, err := writer.Create("lark-approval/SKILL.md")
@@ -218,6 +219,13 @@ func TestManifestUpdateRepairsSkillsWhenBinaryMatches(t *testing.T) {
 	factory, _, _ := newTestFactory(t)
 	if err := updateRunWithContext(context.Background(), &UpdateOptions{Factory: factory, JSON: true}); err != nil {
 		t.Fatal(err)
+	}
+	stateData, err := os.ReadFile(filepath.Join(configDir, "update-state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(stateData), `"latest_version":"same"`) {
+		t.Fatalf("cache = %s, want same-version manifest target", stateData)
 	}
 	skillDir := filepath.Join(root, ".agents", "skills", "lark-approval")
 	if err := os.RemoveAll(skillDir); err != nil {

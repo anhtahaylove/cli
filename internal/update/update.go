@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/larksuite/cli/errs"
 	"github.com/larksuite/cli/internal/core"
 	"github.com/larksuite/cli/internal/distribution"
 	"github.com/larksuite/cli/internal/transport"
@@ -109,15 +110,12 @@ func RefreshCache(ctx context.Context, currentVersion string) {
 	if state != nil && state.Source == src.Identity() && time.Since(time.Unix(state.CheckedAt, 0)) < cacheTTL {
 		return // cache is fresh
 	}
-	version, fetchErr := fetchTargetVersion(context.Background(), src)
-	if fetchErr != nil {
+	if _, fetchErr := FetchTargetForSource(context.Background(), src); fetchErr != nil {
 		return
 	}
-	StoreTarget(src, version)
 }
 
-// StoreTarget records a synchronously fetched target and resets the cache TTL.
-func StoreTarget(src distribution.Source, version string) {
+func storeTarget(src distribution.Source, version string) {
 	_ = saveState(&updateState{
 		LatestVersion: version,
 		CheckedAt:     time.Now().Unix(),
@@ -183,8 +181,8 @@ func (t Target) Available(current string) bool {
 	return versioncheck.IsNewer(t.Version, current)
 }
 
-// FetchTarget synchronously queries the active update source. It is intended
-// for explicit checks such as update and doctor.
+// FetchTarget synchronously queries the active update source and refreshes the
+// local cache. It is intended for explicit checks such as update and doctor.
 func FetchTarget(ctx context.Context) (Target, error) {
 	src, err := distribution.ResolveSource(ctx)
 	if err != nil {
@@ -193,25 +191,34 @@ func FetchTarget(ctx context.Context) (Target, error) {
 	return FetchTargetForSource(ctx, src)
 }
 
-// FetchTargetForSource queries an already-resolved source without consulting
-// the extension registry again.
+// FetchTargetForSource queries an already-resolved source, refreshes the local
+// cache, and does not consult the extension registry again.
 func FetchTargetForSource(ctx context.Context, src distribution.Source) (Target, error) {
-	version, err := fetchTargetVersion(ctx, src)
+	if src.ManifestMode() {
+		manifest, err := FetchManifest(ctx, src)
+		if err != nil {
+			return Target{}, err
+		}
+		return Target{Version: manifest.Version, Exact: true}, nil
+	}
+	version, err := fetchLatestVersion(ctx)
 	if err != nil {
 		return Target{}, err
 	}
-	return Target{Version: version, Exact: src.ManifestMode()}, nil
+	storeTarget(src, version)
+	return Target{Version: version}, nil
 }
 
-func fetchTargetVersion(ctx context.Context, src distribution.Source) (string, error) {
-	if src.ManifestMode() {
-		manifest, err := src.FetchManifest(ctx)
-		if err != nil {
-			return "", err
-		}
-		return manifest.Version, nil
+// FetchManifest fetches the configured manifest and records its target in the
+// update cache. Callers should use this entry point instead of fetching a
+// manifest directly so a successful explicit check resets the cache TTL.
+func FetchManifest(ctx context.Context, src distribution.Source) (*distribution.Manifest, errs.TypedError) {
+	manifest, err := src.FetchManifest(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return fetchLatestVersion(ctx)
+	storeTarget(src, manifest.Version)
+	return manifest, nil
 }
 
 // --- npm registry ---
