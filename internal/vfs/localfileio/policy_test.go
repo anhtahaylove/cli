@@ -445,6 +445,11 @@ func TestPolicy_HomeCredentialFilesAreDenied(t *testing.T) {
 // probeFS counts the paths a validation reads, so a test can assert that the
 // credential directories were never touched. It wraps the real filesystem:
 // what is under test is which paths get asked about, not how they answer.
+//
+// It sees this package's own calls, which is where the roots were resolved. It
+// does not see inside the standard library, so it cannot rule out the per-entry
+// lstat os.ReadDir falls back to on a filesystem that reports no dirent type —
+// that condition is documented at listing() instead.
 type probeFS struct {
 	vfs.FS
 	mu    sync.Mutex
@@ -594,5 +599,52 @@ func TestPolicy_LinkedCredentialRootIsStillResolved(t *testing.T) {
 
 	if label, ok := matchRoots(target, target, roots); !ok || label != "~/.ssh" {
 		t.Errorf("a credential directory linked out of the home directory stopped matching: label=%q ok=%v", label, ok)
+	}
+}
+
+// TestPolicy_HardLinkedCredentialFileIsDenied covers the alias a directory
+// listing cannot show and symlink resolution cannot follow: a second name for
+// a credential file. "~/report.txt" and "~/.npmrc" are then one file, and only
+// identity comparison can say so — which means the roots that could be that
+// file have to be resolved, however innocent the name the caller used.
+func TestPolicy_HardLinkedCredentialFileIsDenied(t *testing.T) {
+	home := fakeHome(t)
+	npmrc := filepath.Join(home, ".npmrc")
+	if err := os.WriteFile(npmrc, []byte("//registry.npmjs.org/:_authToken=probe"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	alias := filepath.Join(home, "report.txt")
+	if err := os.Link(npmrc, alias); err != nil {
+		t.Skipf("cannot create the probe hard link: %v", err)
+	}
+
+	group := newHomeDenyGroup(home)
+	roots := group.rootsToCheck(alias, alias, ancestors(alias))
+
+	label, ok := identityLabel(ancestors(alias), roots)
+	if !ok || label != "~/.npmrc" {
+		t.Errorf("a hard link to ~/.npmrc was not denied: label=%q ok=%v roots=%v", label, ok, labelsOf(roots))
+	}
+}
+
+// TestPolicy_SinglyLinkedFileSkipsCredentialProbe pins the other side of the
+// link-count rule: an ordinary file carries one name, cannot be a credential
+// file under an alias, and so must not cause any of them to be resolved.
+func TestPolicy_SinglyLinkedFileSkipsCredentialProbe(t *testing.T) {
+	home := fakeHome(t)
+	report := filepath.Join(home, "report.txt")
+	if err := os.WriteFile(report, []byte("ordinary"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	group := newHomeDenyGroup(home)
+	probe := installProbeFS(t)
+	roots := group.rootsToCheck(report, report, ancestors(report))
+
+	if len(roots) != 0 {
+		t.Errorf("resolved %v for a singly-linked ordinary file; want none", labelsOf(roots))
+	}
+	if hits := probe.touched(".npmrc"); len(hits) != 0 {
+		t.Errorf("validation reached the npm credential file: %v", hits)
 	}
 }

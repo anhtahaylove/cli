@@ -316,21 +316,57 @@ func newHomeDenyGroup(home string) *homeDenyGroup {
 // by name alone is not among them: matchHomeDenyNames has already ruled on it
 // without reading anything.
 //
-// A root can only match by being an ancestor of the target's real location, and
-// that bounds the work to two kinds of root:
+// A root can only match by being the target's real location or an ancestor of
+// it, and that bounds the work to three kinds of root:
 //
-//   - Roots that sit directly under the home directory as named. Such a root
-//     can only be an ancestor of a target that is itself under this home, and
-//     then it has to be the very first component below it — so the one name the
-//     target could be inside is its own first component (nameRoots).
-//   - Roots that are reached through a symlink, junction or other reparse
-//     point, which can put them anywhere at all (linkedRoots).
+//   - Roots that sit under the home directory as named. Such a root can only be
+//     an ancestor of a target that is itself under this home, and then it has to
+//     be the very first component below it — so the one name the target could be
+//     inside is its own first component (nameRoots).
+//   - Roots reached through a symlink, junction or other reparse point, which
+//     can put them anywhere at all (linkedRoots).
+//   - Roots that could be the target file itself under a second name, which is
+//     possible only when the target carries more than one (hardLinkRoots).
 //
 // Everything else is skipped, and skipping it is the point: downloading into
 // the working directory no longer stats ~/.ssh and its neighbours, which is
 // what set off the security tooling in #2726.
+//
+// Known limit: an alias that leaves no trace in a directory listing and that
+// symlink resolution cannot see through — a bind mount of a credential
+// directory, say — is no longer matched when the target is addressed through
+// the alias. The named path stays denied, and in the strict tier the allowlist
+// still has to accept the alias independently.
 func (g *homeDenyGroup) rootsToCheck(resolved, absLiteral string, chain []ancestor) []policyEntry {
-	return slices.Concat(g.linkedRoots(), g.nameRoots(resolved, absLiteral, chain))
+	return slices.Concat(
+		g.linkedRoots(),
+		g.hardLinkRoots(chain),
+		g.nameRoots(resolved, absLiteral, chain),
+	)
+}
+
+// hardLinkRoots returns the credential files that could be the target itself
+// under another name. A hard link has no target to resolve and no mark in a
+// directory listing, so neither name containment nor the listing can see that
+// "~/report.txt" and "~/.npmrc" are one file — only identity can, and identity
+// needs those roots resolved. The link count decides that, and it is read from
+// the stat the ancestor walk already did (Windows keeps the count behind a
+// handle, so there it opens the caller's own file, never a credential one).
+func (g *homeDenyGroup) hardLinkRoots(chain []ancestor) []policyEntry {
+	if len(chain) == 0 {
+		return nil
+	}
+	leaf := chain[0]
+	if !leaf.info.Mode().IsRegular() || !hasExtraHardLinks(leaf.path, leaf.info) {
+		return nil
+	}
+	var roots []policyEntry
+	for _, n := range g.names {
+		if g.classify(n.rel) == denyNameFile {
+			roots = append(roots, g.resolveRoot(n))
+		}
+	}
+	return roots
 }
 
 // nameRoots resolves the roots that share a first component with the target's
@@ -383,7 +419,7 @@ func (g *homeDenyGroup) targetHeads(resolved, absLiteral string, chain []ancesto
 func (g *homeDenyGroup) linkedRoots() []policyEntry {
 	g.linkedOnce.Do(func() {
 		for _, n := range g.names {
-			if g.crossesLink(n.rel) {
+			if g.classify(n.rel) == denyNameLinked {
 				g.linked = append(g.linked, g.resolveRoot(n))
 			}
 		}
@@ -403,36 +439,61 @@ func (g *homeDenyGroup) resolveRoot(n denyName) policyEntry {
 	return e
 }
 
-// crossesLink reports whether walking rel from the home directory passes
-// through anything that can redirect it elsewhere. A directory it cannot list
-// counts as crossing: an unreadable directory is a question the listing did
-// not answer, and the fail-closed answer is to resolve the root.
-func (g *homeDenyGroup) crossesLink(rel string) bool {
+// denyNameKind is what directory listings can say about a deny name without
+// opening it.
+type denyNameKind int
+
+const (
+	denyNameMissing denyNameKind = iota // no such entry, so it contains nothing
+	denyNameDir                         // a plain directory where its name says
+	denyNameFile                        // a plain file where its name says
+	denyNameLinked                      // reached through a link: can be anywhere
+)
+
+// classify walks rel from the home directory through directory listings alone.
+// A directory it cannot list is reported as linked: an unreadable directory is
+// a question the listing did not answer, and the fail-closed answer is to
+// resolve the root and compare it properly.
+func (g *homeDenyGroup) classify(rel string) denyNameKind {
 	dir := g.home.resolved
 	segments := strings.Split(rel, "/")
 	for i, segment := range segments {
 		entries, err := g.listing(dir)
 		if err != nil {
-			return true
+			return denyNameLinked
 		}
 		entry, ok := findEntry(entries, segment)
 		switch {
-		case !ok: // nothing by that name: the root cannot contain anything
-			return false
+		case !ok:
+			return denyNameMissing
 		case entry.Type()&(os.ModeSymlink|os.ModeIrregular) != 0:
-			return true
+			return denyNameLinked
 		case i == len(segments)-1:
-			return false
-		case !entry.IsDir():
-			return false
+			return finalKind(entry)
+		case !entry.IsDir(): // a file cannot hold the rest of the path
+			return denyNameMissing
 		}
 		dir = filepath.Join(dir, segment)
 	}
-	return false
+	return denyNameMissing
+}
+
+func finalKind(entry os.DirEntry) denyNameKind {
+	if entry.IsDir() {
+		return denyNameDir
+	}
+	return denyNameFile
 }
 
 // listing reads dir once per process. Concurrent validations share the cache:
 // download fan-out runs them in parallel.
+//
+// Reading the directory is what keeps the entries closed: Windows fills every
+// attribute from the one directory query, and Unix from the dirent type. The
+// exception is a filesystem that reports no dirent type (DT_UNKNOWN — some FUSE
+// mounts, XFS made without ftype): os.ReadDir then lstats each entry itself, so
+// on those the credential paths are stat'ed after all, as they were before this
+// existed. It stays one listing per process either way.
 func (g *homeDenyGroup) listing(dir string) ([]os.DirEntry, error) {
 	g.listMu.Lock()
 	defer g.listMu.Unlock()
