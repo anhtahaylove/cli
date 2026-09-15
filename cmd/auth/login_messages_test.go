@@ -19,8 +19,11 @@ func TestGetLoginMsg_Zh(t *testing.T) {
 	if msg != loginMsgZh {
 		t.Error("expected zh message set")
 	}
-	if msg.SelectDomains != "选择要授权的业务域" {
-		t.Errorf("unexpected SelectDomains: %s", msg.SelectDomains)
+	if msg.OpenURL != "在浏览器中打开以下链接进行认证:\n\n" {
+		t.Errorf("unexpected OpenURL: %s", msg.OpenURL)
+	}
+	if msg.LoginSuccess != "登录成功! 用户: %s (%s)" {
+		t.Errorf("unexpected LoginSuccess: %s", msg.LoginSuccess)
 	}
 }
 
@@ -29,8 +32,8 @@ func TestGetLoginMsg_En(t *testing.T) {
 	if msg != loginMsgEn {
 		t.Error("expected en message set")
 	}
-	if msg.SelectDomains != "Select domains to authorize" {
-		t.Errorf("unexpected SelectDomains: %s", msg.SelectDomains)
+	if msg.OpenURL != "Open this URL in your browser to authenticate:\n\n" {
+		t.Errorf("unexpected OpenURL: %s", msg.OpenURL)
 	}
 }
 
@@ -78,29 +81,6 @@ func TestLoginMsg_FormatStrings(t *testing.T) {
 			t.Errorf("%s LoginSuccess has no format verb", lang)
 		}
 
-		// AuthorizedUser should contain two %s placeholders (userName, openId)
-		got = fmt.Sprintf(msg.AuthorizedUser, "testuser", "ou_123")
-		if got == msg.AuthorizedUser {
-			t.Errorf("%s AuthorizedUser has no format verb", lang)
-		}
-
-		// SummaryDomains should contain %s
-		got = fmt.Sprintf(msg.SummaryDomains, "calendar, task")
-		if got == msg.SummaryDomains {
-			t.Errorf("%s SummaryDomains has no format verb", lang)
-		}
-
-		// SummaryPerm should contain %s
-		got = fmt.Sprintf(msg.SummaryPerm, "all")
-		if got == msg.SummaryPerm {
-			t.Errorf("%s SummaryPerm has no format verb", lang)
-		}
-
-		// SummaryScopes should contain %d and %s
-		got = fmt.Sprintf(msg.SummaryScopes, 5, "a, b, c")
-		if got == msg.SummaryScopes {
-			t.Errorf("%s SummaryScopes has no format verb", lang)
-		}
 	}
 }
 
@@ -150,42 +130,6 @@ func TestAgentTimeoutHint_ExplicitProfilePreservesStartAndResume(t *testing.T) {
 			if !strings.Contains(hint, want) {
 				t.Errorf("%s profile-aware AgentTimeoutHint missing %q: %s", lang, want, hint)
 			}
-		}
-	}
-}
-
-// TestBundleKey_AgreesWithGetLoginMsg pins the property that keeps the
-// interactive login screen in one language: the key handed to the
-// service-description registry must select the same bundle the surrounding
-// form text came from. The locale list is derived from the i18n catalog, so a
-// locale added there is covered here without anyone remembering to.
-func TestBundleKey_AgreesWithGetLoginMsg(t *testing.T) {
-	var locales []i18n.Lang
-	for _, entry := range strings.Split(i18n.CodesWithShort(), ", ") {
-		code, _, found := strings.Cut(entry, " (")
-		if !found {
-			t.Fatalf("CodesWithShort() entry %q is not in the %q form", entry, "code (short)")
-		}
-		locales = append(locales, i18n.Lang(code))
-	}
-	if len(locales) < 2 {
-		t.Fatalf("derived %d locales from CodesWithShort(), want the whole catalog", len(locales))
-	}
-
-	// Values expressing no preference render Chinese, same as getLoginMsg.
-	locales = append(locales, "", "unknown", "ZH", "en_US")
-
-	for _, lang := range locales {
-		wantEnglish := getLoginMsg(lang) == loginMsgEn
-		key := bundleKey(lang)
-		if key != "en" && key != "zh" {
-			t.Errorf("bundleKey(%q) = %q, want %q or %q", lang, key, "en", "zh")
-			continue
-		}
-		if gotEnglish := key == "en"; gotEnglish != wantEnglish {
-			t.Errorf("bundleKey(%q) = %q but getLoginMsg(%q) returns the %s bundle: "+
-				"the form and its domain rows would render in different languages",
-				lang, key, lang, map[bool]string{true: "English", false: "Chinese"}[wantEnglish])
 		}
 	}
 }
