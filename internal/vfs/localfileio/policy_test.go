@@ -452,8 +452,9 @@ func TestPolicy_HomeCredentialFilesAreDenied(t *testing.T) {
 // that condition is documented at listing() instead.
 type probeFS struct {
 	vfs.FS
-	mu    sync.Mutex
-	paths []string
+	mu       sync.Mutex
+	paths    []string
+	readDirs []string
 }
 
 func (p *probeFS) record(name string) {
@@ -465,6 +466,26 @@ func (p *probeFS) record(name string) {
 func (p *probeFS) Stat(name string) (fs.FileInfo, error)  { p.record(name); return p.FS.Stat(name) }
 func (p *probeFS) Lstat(name string) (fs.FileInfo, error) { p.record(name); return p.FS.Lstat(name) }
 func (p *probeFS) Open(name string) (*os.File, error)     { p.record(name); return p.FS.Open(name) }
+
+func (p *probeFS) ReadDir(name string) ([]os.DirEntry, error) {
+	p.mu.Lock()
+	p.readDirs = append(p.readDirs, name)
+	p.mu.Unlock()
+	return p.FS.ReadDir(name)
+}
+
+// readDirCount reports how many times a directory was enumerated.
+func (p *probeFS) readDirCount(dir string) int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	n := 0
+	for _, seen := range p.readDirs {
+		if seen == dir {
+			n++
+		}
+	}
+	return n
+}
 
 // touched reports the recorded paths that name the given entry.
 func (p *probeFS) touched(name string) []string {
@@ -646,5 +667,46 @@ func TestPolicy_SinglyLinkedFileSkipsCredentialProbe(t *testing.T) {
 	}
 	if hits := probe.touched(".npmrc"); len(hits) != 0 {
 		t.Errorf("validation reached the npm credential file: %v", hits)
+	}
+}
+
+// TestPolicy_UnlistableHomeIsEnumeratedOnce pins the negative half of the
+// listing cache. A home directory that allows access by name while refusing
+// enumeration answers the classification question with an error, and that
+// answer has to be kept: re-reading the directory for every name on every
+// validation costs a syscall per name, and under access control it logs
+// another denial each time.
+func TestPolicy_UnlistableHomeIsEnumeratedOnce(t *testing.T) {
+	home := fakeHome(t)
+	npmrc := filepath.Join(home, ".npmrc")
+	if err := os.WriteFile(npmrc, []byte("token"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	alias := filepath.Join(home, "report.txt")
+	if err := os.Link(npmrc, alias); err != nil {
+		t.Skipf("cannot create the probe hard link: %v", err)
+	}
+	if err := os.Chmod(home, 0o300); err != nil {
+		t.Skipf("cannot drop read permission on the fixture home: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(home, 0o700) })
+	if _, err := os.ReadDir(home); err == nil {
+		t.Skip("the fixture home is still listable; the test needs an unreadable one")
+	}
+
+	group := newHomeDenyGroup(home)
+	probe := installProbeFS(t)
+	for range 2 {
+		group.rootsToCheck(alias, alias, ancestors(alias))
+	}
+
+	if n := probe.readDirCount(home); n != 1 {
+		t.Errorf("enumerated the home directory %d times across two validations; want 1", n)
+	}
+	// Fail-closed is not traded away for the caching: an unreadable directory
+	// still resolves its roots, so the hard link stays denied.
+	roots := group.rootsToCheck(alias, alias, ancestors(alias))
+	if label, ok := identityLabel(ancestors(alias), roots); !ok || label != "~/.npmrc" {
+		t.Errorf("hard link stopped being denied when the home could not be listed: label=%q ok=%v", label, ok)
 	}
 }

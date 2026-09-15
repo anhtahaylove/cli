@@ -277,8 +277,14 @@ type homeDenyGroup struct {
 	home  policyEntry
 	names []denyName
 
+	// Classification is one pass over the listings; the two selections derived
+	// from it resolve their roots on first use and keep them.
+	kindsOnce  sync.Once
+	kinds      map[string]denyNameKind
 	linkedOnce sync.Once
 	linked     []policyEntry
+	fileOnce   sync.Once
+	files      []policyEntry
 
 	// Both caches are shared by concurrent validations — download fan-out runs
 	// them in parallel — and each has its own lock so that selecting a root
@@ -287,14 +293,24 @@ type homeDenyGroup struct {
 	resolved   map[string]policyEntry
 
 	listMu   sync.Mutex
-	listings map[string][]os.DirEntry
+	listings map[string]listing
+}
+
+// listing is one directory read, kept whether it succeeded or not. Caching the
+// failure matters as much as caching the entries: a home directory that denies
+// enumeration while still allowing access by name would otherwise be re-read
+// for every name on every validation, and under access control each attempt is
+// another denial to log.
+type listing struct {
+	entries []os.DirEntry
+	err     error
 }
 
 func newHomeDenyGroup(home string) *homeDenyGroup {
 	g := &homeDenyGroup{
 		home:     newPolicyEntry("the home directory", home),
 		resolved: map[string]policyEntry{},
-		listings: map[string][]os.DirEntry{},
+		listings: map[string]listing{},
 	}
 	for _, rel := range homeDenyNames {
 		g.names = append(g.names, denyName{
@@ -332,11 +348,20 @@ func newHomeDenyGroup(home string) *homeDenyGroup {
 // the working directory no longer stats ~/.ssh and its neighbours, which is
 // what set off the security tooling in #2726.
 //
-// Known limit: an alias that leaves no trace in a directory listing and that
-// symlink resolution cannot see through — a bind mount of a credential
-// directory, say — is no longer matched when the target is addressed through
-// the alias. The named path stays denied, and in the strict tier the allowlist
-// still has to accept the alias independently.
+// Two limits come with resolving late rather than up front, both of them the
+// price of not stat-ing credential paths a target has nothing to do with:
+//
+//   - An alias that leaves no trace in a directory listing and that symlink
+//     resolution cannot see through — a bind mount of a credential directory,
+//     say — is not matched when the target is addressed through the alias.
+//   - Identities are read when a root is resolved rather than pinned at the
+//     first validation, so a credential directory renamed between two
+//     validations of one process is matched under its new name only by that
+//     name. Every ordinary invocation is a fresh process, which never had the
+//     pinning either.
+//
+// In both cases the named path stays denied, and in the strict tier the
+// allowlist still has to accept the alias independently.
 func (g *homeDenyGroup) rootsToCheck(resolved, absLiteral string, chain []ancestor) []policyEntry {
 	return slices.Concat(
 		g.linkedRoots(),
@@ -360,13 +385,8 @@ func (g *homeDenyGroup) hardLinkRoots(chain []ancestor) []policyEntry {
 	if !leaf.info.Mode().IsRegular() || !hasExtraHardLinks(leaf.path, leaf.info) {
 		return nil
 	}
-	var roots []policyEntry
-	for _, n := range g.names {
-		if g.classify(n.rel) == denyNameFile {
-			roots = append(roots, g.resolveRoot(n))
-		}
-	}
-	return roots
+	g.fileOnce.Do(func() { g.files = g.rootsOfKind(denyNameFile) })
+	return g.files
 }
 
 // nameRoots resolves the roots that share a first component with the target's
@@ -417,14 +437,32 @@ func (g *homeDenyGroup) targetHeads(resolved, absLiteral string, chain []ancesto
 // without opening any of them: listing ~ reveals whether ".ssh" is a link
 // without ever touching ~/.ssh.
 func (g *homeDenyGroup) linkedRoots() []policyEntry {
-	g.linkedOnce.Do(func() {
+	g.linkedOnce.Do(func() { g.linked = g.rootsOfKind(denyNameLinked) })
+	return g.linked
+}
+
+// rootsOfKind resolves every name the listings put in one class.
+func (g *homeDenyGroup) rootsOfKind(want denyNameKind) []policyEntry {
+	var roots []policyEntry
+	for _, n := range g.names {
+		if g.classifyAll()[n.rel] == want {
+			roots = append(roots, g.resolveRoot(n))
+		}
+	}
+	return roots
+}
+
+// classifyAll walks every deny name through the directory listings once per
+// process. The listings are cached, failures included, so this never re-reads a
+// directory however many validations follow.
+func (g *homeDenyGroup) classifyAll() map[string]denyNameKind {
+	g.kindsOnce.Do(func() {
+		g.kinds = make(map[string]denyNameKind, len(g.names))
 		for _, n := range g.names {
-			if g.classify(n.rel) == denyNameLinked {
-				g.linked = append(g.linked, g.resolveRoot(n))
-			}
+			g.kinds[n.rel] = g.classify(n.rel)
 		}
 	})
-	return g.linked
+	return g.kinds
 }
 
 // resolveRoot resolves one deny root, once per process.
@@ -497,15 +535,12 @@ func finalKind(entry os.DirEntry) denyNameKind {
 func (g *homeDenyGroup) listing(dir string) ([]os.DirEntry, error) {
 	g.listMu.Lock()
 	defer g.listMu.Unlock()
-	if entries, ok := g.listings[dir]; ok {
-		return entries, nil
+	if cached, ok := g.listings[dir]; ok {
+		return cached.entries, cached.err
 	}
 	entries, err := vfs.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-	g.listings[dir] = entries
-	return entries, nil
+	g.listings[dir] = listing{entries: entries, err: err}
+	return entries, err
 }
 
 // findEntry looks name up in a directory listing the way the filesystem itself
