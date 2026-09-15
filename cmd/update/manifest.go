@@ -10,6 +10,7 @@ import (
 	"github.com/larksuite/cli/errs"
 	"github.com/larksuite/cli/internal/distribution"
 	"github.com/larksuite/cli/internal/output"
+	internalupdate "github.com/larksuite/cli/internal/update"
 )
 
 func runManifestUpdate(ctx context.Context, opts *UpdateOptions, src distribution.Source) error {
@@ -20,6 +21,7 @@ func runManifestUpdate(ctx context.Context, opts *UpdateOptions, src distributio
 		return reportDistributionError(opts, err)
 	}
 	target := manifest.Version
+	internalupdate.StoreTarget(src, target)
 	if opts.Check {
 		return reportManifestStatus(opts, current, target, false)
 	}

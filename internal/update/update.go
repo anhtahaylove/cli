@@ -113,6 +113,11 @@ func RefreshCache(ctx context.Context, currentVersion string) {
 	if fetchErr != nil {
 		return
 	}
+	StoreTarget(src, version)
+}
+
+// StoreTarget records a synchronously fetched target and resets the cache TTL.
+func StoreTarget(src distribution.Source, version string) {
 	_ = saveState(&updateState{
 		LatestVersion: version,
 		CheckedAt:     time.Now().Unix(),

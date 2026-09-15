@@ -75,6 +75,8 @@ func TestUpdateCommandPreservesCancellationContext(t *testing.T) {
 }
 
 func TestManifestCheckAcceptsHTTPAndReportsOpaqueDowngradeTarget(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("LARKSUITE_CLI_CONFIG_DIR", configDir)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"schema":1,"version":"older-channel","artifacts":{"skills":{"url":"https://dist.example/skills","checksum":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},%q:{"url":"https://dist.example/binary","checksum":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}}`, runtime.GOOS+"-"+runtime.GOARCH)
 	}))
@@ -85,6 +87,15 @@ func TestManifestCheckAcceptsHTTPAndReportsOpaqueDowngradeTarget(t *testing.T) {
 	exttransport.Register(updateManifestProvider{manifestURL: server.URL})
 	distribution.DefaultClient = server.Client()
 	currentVersion = func() string { return "newer-channel" }
+	src, sourceErr := distribution.ResolveSource(context.Background())
+	if sourceErr != nil {
+		t.Fatal(sourceErr)
+	}
+	oldCheckedAt := time.Now().Add(-time.Hour).Unix()
+	oldState := fmt.Sprintf(`{"latest_version":"stale-target","checked_at":%d,"source":%q}`, oldCheckedAt, src.Identity())
+	if err := os.WriteFile(filepath.Join(configDir, "update-state.json"), []byte(oldState), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		exttransport.Register(previousProvider)
 		distribution.DefaultClient = previousClient
@@ -105,6 +116,21 @@ func TestManifestCheckAcceptsHTTPAndReportsOpaqueDowngradeTarget(t *testing.T) {
 	}
 	if _, exists := got["latest_version"]; exists {
 		t.Fatalf("manifest output must not label an arbitrary target as latest: %#v", got)
+	}
+	stateData, err := os.ReadFile(filepath.Join(configDir, "update-state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var state struct {
+		LatestVersion string `json:"latest_version"`
+		CheckedAt     int64  `json:"checked_at"`
+		Source        string `json:"source"`
+	}
+	if err := json.Unmarshal(stateData, &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.LatestVersion != "older-channel" || state.Source != src.Identity() || state.CheckedAt <= oldCheckedAt {
+		t.Fatalf("cache = %#v, want refreshed manifest target", state)
 	}
 }
 
