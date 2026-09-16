@@ -106,6 +106,7 @@ func (m *ExtensionMiddleware) WithBaseRoundTripper(base http.RoundTripper) http.
 // the wrapped transport is called.
 func (m *ExtensionMiddleware) RoundTrip(req *http.Request) (*http.Response, error) {
 	origCtx := req.Context()
+	logicalURL := req.URL.String()
 	req = req.Clone(origCtx)
 	if m.rewriter != nil {
 		rewritten := m.rewriter.RewriteURL(req.URL.String())
@@ -138,9 +139,21 @@ func (m *ExtensionMiddleware) RoundTrip(req *http.Request) (*http.Response, erro
 	}
 
 	req = req.WithContext(origCtx)
+	effectiveURL := ""
+	if req.URL != nil && req.URL.String() != logicalURL {
+		safeURL := *req.URL
+		safeURL.User = nil
+		safeURL.RawQuery = ""
+		safeURL.ForceQuery = false
+		safeURL.Fragment = ""
+		effectiveURL = safeURL.String()
+	}
 	resp, err := m.BaseRoundTripper().RoundTrip(req)
 	if post != nil {
 		post(resp, err)
+	}
+	if err != nil && effectiveURL != "" {
+		err = fmt.Errorf("effective request %q failed: %w", effectiveURL, err)
 	}
 	return resp, err
 }
