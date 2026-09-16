@@ -249,6 +249,26 @@ func TestHTTPPolicyRouterInterceptorObservesRewrittenURL(t *testing.T) {
 	}
 }
 
+func TestHTTPPolicyRouterRewriteErrorIncludesSafeEffectiveURL(t *testing.T) {
+	registerTestProvider(t, rewriteTestProvider{
+		rewriter: rewriteFunc(func(rawURL string) string {
+			return strings.Replace(rawURL, "source.example.test", "mirror.example.test", 1)
+		}),
+	})
+
+	transport := WrapWithExtensionForClass(roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("connection closed")
+	}), exttransport.RequestClassPlatform)
+	req := httptest.NewRequest(http.MethodGet, "https://source.example.test/open-apis/test?token=secret#result", nil)
+	_, err := transport.RoundTrip(req)
+	if err == nil {
+		t.Fatal("RoundTrip() error = nil")
+	}
+	if got, want := err.Error(), `effective request "https://mirror.example.test/open-apis/test" failed: connection closed`; got != want {
+		t.Fatalf("RoundTrip() error = %q, want %q", got, want)
+	}
+}
+
 func TestHTTPPolicyRouterRewritesPlatformButPreservesExternalURL(t *testing.T) {
 	interceptor := &testHeaderInterceptor{}
 	registerTestProvider(t, rewriteTestProvider{
