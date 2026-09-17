@@ -115,6 +115,30 @@
                 }
               ]
             },
+            "series_data_labels": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "value",
+                      "category",
+                      "percentage",
+                      "value_category",
+                      "value_percentage",
+                      "category_percentage",
+                      "value_category_percentage",
+                      "series"
+                    ]
+                  }
+                }
+              ]
+            },
             "key_index": {
               "type": "integer",
               "minimum": 1,
@@ -1047,6 +1071,10 @@
               {
                 "type": "object",
                 "properties": {
+                  "ooxml": {
+                    "type": "boolean",
+                    "description": "是否按 Office OOXML 导入图语义渲染整张图表"
+                  },
                   "title": {
                     "type": "object",
                     "description": "图表标题配置",
@@ -1067,6 +1095,10 @@
                       "fontSize": {
                         "type": "number",
                         "description": "字体大小"
+                      },
+                      "fontFamily": {
+                        "type": "string",
+                        "description": "字体名称"
                       },
                       "bold": {
                         "type": "boolean",
@@ -1248,7 +1280,8 @@
                                 },
                                 "color": {
                                   "type": "string",
-                                  "description": "色标颜色"
+                                  "description": "色标颜色",
+                                  "format": "color"
                                 },
                                 "opacity": {
                                   "type": "number",
@@ -1366,7 +1399,8 @@
                                     },
                                     "color": {
                                       "type": "string",
-                                      "description": "色标颜色"
+                                      "description": "色标颜色",
+                                      "format": "color"
                                     },
                                     "opacity": {
                                       "type": "number",
@@ -1456,7 +1490,8 @@
                                     },
                                     "color": {
                                       "type": "string",
-                                      "description": "色标颜色"
+                                      "description": "色标颜色",
+                                      "format": "color"
                                     },
                                     "opacity": {
                                       "type": "number",
@@ -2233,7 +2268,8 @@
                                         },
                                         "color": {
                                           "type": "string",
-                                          "description": "字体颜色"
+                                          "description": "字体颜色",
+                                          "format": "color"
                                         }
                                       }
                                     },
@@ -2801,8 +2837,12 @@
                           "labels": {
                             "type": "object",
                             "nullable": true,
-                            "description": "数据标签配置。labels 对象的存在性即开关：创建时不显示数据标签应省略整个 labels 字段；更新时传 null 可删除已有全局标签。一旦传入 labels 对象（即便 value/category/series/percentage 全部置为 false），数据标签仍会显示，且默认兜底显示 value。",
+                            "description": "全局数据标签配置。创建时不显示数据标签可省略整个 labels 字段；更新时传 null 可删除已有全局标签。未指定标签内容时默认显示 value；显式将 value/category/series/percentage 全部设为 false 时保留空标签内容，不再补回 value。",
                             "properties": {
+                              "overlap": {
+                                "type": "boolean",
+                                "description": "全局数据标签自动避让开关，仅对 VChart 的柱、条、折线、面积、散点及组合图系列生效。true 允许已指定位置的标签在发生重叠时尝试平移错开，false 关闭避让；省略时保留原有按位置决定避让的行为。仅在全局 labels 中设置，不是单系列开关，也不控制标签是否显示。"
+                              },
                               "position": {
                                 "type": "string",
                                 "description": "标签位置",
@@ -2844,13 +2884,6 @@
                               "showGuidLine": {
                                 "type": "boolean",
                                 "description": "是否显示标签引导线"
-                              },
-                              "anchorMode": {
-                                "type": "string",
-                                "enum": [
-                                  "ooxml"
-                                ],
-                                "description": "饼图外侧标签使用 OOXML 八向贴靠布局"
                               },
                               "fontSize": {
                                 "type": "number",
@@ -2925,11 +2958,21 @@
                                 },
                                 "labels": {
                                   "type": "object",
-                                  "description": "数据标签配置（覆盖单系列，配置项同 plotArea.plot.labels，包括 separator、legendKey 和 showGuidLine）。不覆盖该系列数据标签时省略整个 labels 字段；一旦传入 labels（即便显示开关全部置为 false），该系列仍会显示数据标签。"
+                                  "description": "数据标签配置（覆盖单系列，样式项同 plotArea.plot.labels，但 overlap 仅支持全局设置）。不覆盖该系列数据标签时省略整个 labels 字段；未指定内容时默认显示 value，显式将 value/category/series/percentage 全部设为 false 时保留空标签内容。"
                                 },
                                 "invertIfNegative": {
-                                  "type": "string",
-                                  "description": "负值数据点使用的反色填充颜色"
+                                  "description": "负值反色；true 表示使用 Office 缺省反色，也可指定填充颜色",
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "enum": [
+                                        true
+                                      ]
+                                    }
+                                  ]
                                 },
                                 "waterfall": {
                                   "type": "object",
@@ -3310,6 +3353,15 @@
                                 "maxMin"
                               ]
                             },
+                            "crosses": {
+                              "type": "string",
+                              "description": "坐标轴与对面轴的交叉位置",
+                              "enum": [
+                                "autoZero",
+                                "min",
+                                "max"
+                              ]
+                            },
                             "domainGradient": {
                               "type": "object",
                               "description": "轴线渐变，包含 type、归一化坐标、gradientMethod 和至少两个 stops",
@@ -3365,7 +3417,8 @@
                                       },
                                       "color": {
                                         "type": "string",
-                                        "description": "色标颜色"
+                                        "description": "色标颜色",
+                                        "format": "color"
                                       },
                                       "opacity": {
                                         "type": "number",
@@ -3517,7 +3570,8 @@
                                     },
                                     "color": {
                                       "type": "string",
-                                      "description": "次网格线颜色"
+                                      "description": "次网格线颜色",
+                                      "format": "color"
                                     },
                                     "dash": {
                                       "type": "array",
@@ -3813,6 +3867,10 @@
               {
                 "type": "object",
                 "properties": {
+                  "ooxml": {
+                    "type": "boolean",
+                    "description": "是否按 Office OOXML 导入图语义渲染整张图表"
+                  },
                   "title": {
                     "type": "object",
                     "description": "图表标题配置",
@@ -3833,6 +3891,10 @@
                       "fontSize": {
                         "type": "number",
                         "description": "字体大小"
+                      },
+                      "fontFamily": {
+                        "type": "string",
+                        "description": "字体名称"
                       },
                       "bold": {
                         "type": "boolean",
@@ -4014,7 +4076,8 @@
                                 },
                                 "color": {
                                   "type": "string",
-                                  "description": "色标颜色"
+                                  "description": "色标颜色",
+                                  "format": "color"
                                 },
                                 "opacity": {
                                   "type": "number",
@@ -4132,7 +4195,8 @@
                                     },
                                     "color": {
                                       "type": "string",
-                                      "description": "色标颜色"
+                                      "description": "色标颜色",
+                                      "format": "color"
                                     },
                                     "opacity": {
                                       "type": "number",
@@ -4222,7 +4286,8 @@
                                     },
                                     "color": {
                                       "type": "string",
-                                      "description": "色标颜色"
+                                      "description": "色标颜色",
+                                      "format": "color"
                                     },
                                     "opacity": {
                                       "type": "number",
@@ -4999,7 +5064,8 @@
                                         },
                                         "color": {
                                           "type": "string",
-                                          "description": "字体颜色"
+                                          "description": "字体颜色",
+                                          "format": "color"
                                         }
                                       }
                                     },
@@ -5567,8 +5633,12 @@
                           "labels": {
                             "type": "object",
                             "nullable": true,
-                            "description": "数据标签配置。labels 对象的存在性即开关：创建时不显示数据标签应省略整个 labels 字段；更新时传 null 可删除已有全局标签。一旦传入 labels 对象（即便 value/category/series/percentage 全部置为 false），数据标签仍会显示，且默认兜底显示 value。",
+                            "description": "全局数据标签配置。创建时不显示数据标签可省略整个 labels 字段；更新时传 null 可删除已有全局标签。未指定标签内容时默认显示 value；显式将 value/category/series/percentage 全部设为 false 时保留空标签内容，不再补回 value。",
                             "properties": {
+                              "overlap": {
+                                "type": "boolean",
+                                "description": "全局数据标签自动避让开关，仅对 VChart 的柱、条、折线、面积、散点及组合图系列生效。true 允许已指定位置的标签在发生重叠时尝试平移错开，false 关闭避让；省略时保留原有按位置决定避让的行为。仅在全局 labels 中设置，不是单系列开关，也不控制标签是否显示。"
+                              },
                               "position": {
                                 "type": "string",
                                 "description": "标签位置",
@@ -5610,13 +5680,6 @@
                               "showGuidLine": {
                                 "type": "boolean",
                                 "description": "是否显示标签引导线"
-                              },
-                              "anchorMode": {
-                                "type": "string",
-                                "enum": [
-                                  "ooxml"
-                                ],
-                                "description": "饼图外侧标签使用 OOXML 八向贴靠布局"
                               },
                               "fontSize": {
                                 "type": "number",
@@ -5691,11 +5754,21 @@
                                 },
                                 "labels": {
                                   "type": "object",
-                                  "description": "数据标签配置（覆盖单系列，配置项同 plotArea.plot.labels，包括 separator、legendKey 和 showGuidLine）。不覆盖该系列数据标签时省略整个 labels 字段；一旦传入 labels（即便显示开关全部置为 false），该系列仍会显示数据标签。"
+                                  "description": "数据标签配置（覆盖单系列，样式项同 plotArea.plot.labels，但 overlap 仅支持全局设置）。不覆盖该系列数据标签时省略整个 labels 字段；未指定内容时默认显示 value，显式将 value/category/series/percentage 全部设为 false 时保留空标签内容。"
                                 },
                                 "invertIfNegative": {
-                                  "type": "string",
-                                  "description": "负值数据点使用的反色填充颜色"
+                                  "description": "负值反色；true 表示使用 Office 缺省反色，也可指定填充颜色",
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "enum": [
+                                        true
+                                      ]
+                                    }
+                                  ]
                                 },
                                 "waterfall": {
                                   "type": "object",
@@ -6076,6 +6149,15 @@
                                 "maxMin"
                               ]
                             },
+                            "crosses": {
+                              "type": "string",
+                              "description": "坐标轴与对面轴的交叉位置",
+                              "enum": [
+                                "autoZero",
+                                "min",
+                                "max"
+                              ]
+                            },
                             "domainGradient": {
                               "type": "object",
                               "description": "轴线渐变，包含 type、归一化坐标、gradientMethod 和至少两个 stops",
@@ -6131,7 +6213,8 @@
                                       },
                                       "color": {
                                         "type": "string",
-                                        "description": "色标颜色"
+                                        "description": "色标颜色",
+                                        "format": "color"
                                       },
                                       "opacity": {
                                         "type": "number",
@@ -6283,7 +6366,8 @@
                                     },
                                     "color": {
                                       "type": "string",
-                                      "description": "次网格线颜色"
+                                      "description": "次网格线颜色",
+                                      "format": "color"
                                     },
                                     "dash": {
                                       "type": "array",
