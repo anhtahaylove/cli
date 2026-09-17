@@ -4,7 +4,9 @@
 package transport
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/larksuite/cli/errs"
 	exttransport "github.com/larksuite/cli/extension/transport"
+	"github.com/larksuite/cli/internal/output"
 )
 
 type testProvider struct {
@@ -256,16 +259,31 @@ func TestHTTPPolicyRouterRewriteErrorIncludesSafeEffectiveURL(t *testing.T) {
 		}),
 	})
 
+	cause := errors.New("connection closed")
 	transport := WrapWithExtensionForClass(roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return nil, errors.New("connection closed")
+		return nil, cause
 	}), exttransport.RequestClassPlatform)
 	req := httptest.NewRequest(http.MethodGet, "https://source.example.test/open-apis/test?token=secret#result", nil)
-	_, err := transport.RoundTrip(req)
+	req.RequestURI = ""
+	client := &http.Client{Transport: transport}
+	_, err := client.Do(req)
 	if err == nil {
 		t.Fatal("RoundTrip() error = nil")
 	}
-	if got, want := err.Error(), `effective request "https://mirror.example.test/open-apis/test" failed: connection closed`; got != want {
-		t.Fatalf("RoundTrip() error = %q, want %q", got, want)
+	typed := errs.NewAuthenticationError(errs.SubtypeUnknown, "failed to get user info: %v", err).WithCause(err)
+	var buf bytes.Buffer
+	if !output.WriteTypedErrorEnvelope(&buf, typed, "user") {
+		t.Fatal("failed to render error")
+	}
+	var envelope struct{ Error errs.Problem }
+	if err := json.Unmarshal(buf.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := envelope.Error.Message, `failed to get user info: Get "https://mirror.example.test/open-apis/test": connection closed`; got != want {
+		t.Fatalf("rendered error = %q, want %q", got, want)
+	}
+	if !errors.Is(typed, cause) || typed.Message == envelope.Error.Message {
+		t.Fatal("rendering must preserve the cause and leave the original error unchanged")
 	}
 }
 

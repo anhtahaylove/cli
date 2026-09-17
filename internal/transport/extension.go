@@ -153,10 +153,21 @@ func (m *ExtensionMiddleware) RoundTrip(req *http.Request) (*http.Response, erro
 		post(resp, err)
 	}
 	if err != nil && effectiveURL != "" {
-		err = fmt.Errorf("effective request %q failed: %w", effectiveURL, err)
+		err = &effectiveRequestError{cause: err, url: effectiveURL}
 	}
 	return resp, err
 }
+
+// Keep the effective address on the cause: net/http adds its own url.Error
+// using the caller's original URL after RoundTrip returns.
+type effectiveRequestError struct {
+	cause error
+	url   string
+}
+
+func (e *effectiveRequestError) Error() string               { return e.cause.Error() }
+func (e *effectiveRequestError) Unwrap() error               { return e.cause }
+func (e *effectiveRequestError) EffectiveRequestURL() string { return e.url }
 
 // WrapWithExtension wraps base with the currently registered request
 // interceptor. Callers that need automatic platform URL rewriting use
