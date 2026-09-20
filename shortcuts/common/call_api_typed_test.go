@@ -98,6 +98,33 @@ func TestCallAPITyped_Success(t *testing.T) {
 	}
 }
 
+func TestCallAPITypedWithLogID_Success(t *testing.T) {
+	rt, reg := newCallAPITypedRuntime(t)
+	reg.Register(&httpmock.Stub{
+		Method: "POST",
+		URL:    "/open-apis/x/y",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+			"X-Tt-Logid":   []string{"hdr-log-ok"},
+		},
+		Body: map[string]interface{}{"code": float64(0), "data": map[string]interface{}{"token": "tok1"}},
+	})
+
+	data, logID, err := rt.CallAPITypedWithLogID("POST", "/open-apis/x/y", nil, map[string]any{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if logID != "hdr-log-ok" {
+		t.Errorf("logID = %q, want hdr-log-ok", logID)
+	}
+	if data["token"] != "tok1" {
+		t.Errorf("data[token] = %v, want tok1", data["token"])
+	}
+	if _, leaked := data["log_id"]; leaked {
+		t.Errorf("success data must not carry log_id, got: %v", data)
+	}
+}
+
 // TestAPIClassifyContext verifies the classify context is built from the
 // runtime: Brand / AppID from config, Identity from the resolved caller, and
 // LarkCmd from the running command path.

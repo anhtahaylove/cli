@@ -7,6 +7,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/larksuite/cli/errs"
 	"github.com/larksuite/cli/shortcuts/common"
 )
 
@@ -70,14 +71,58 @@ func newObjectListShortcut(spec objectListSpec) common.Shortcut {
 			if err != nil {
 				return err
 			}
-			out, err := callTool(ctx, runtime, token, ToolKindRead, spec.toolName, objectListInput(runtime, token, sheetID, sheetName, spec))
+			out, logID, err := callToolWithLogID(ctx, runtime, token, ToolKindRead, spec.toolName, objectListInput(runtime, token, sheetID, sheetName, spec))
 			if err != nil {
 				return err
+			}
+			if spec.boolFlag != "" && runtime.Bool(spec.boolFlag) {
+				if failures := thumbnailFailures(out); len(failures) > 0 {
+					thumbErr := errs.NewAPIError(errs.SubtypeServerError,
+						"tool %q returned no usable thumbnail for chart(s): %s", spec.toolName, strings.Join(failures, ", ")).
+						WithRetryable().
+						WithHint("retry the thumbnail read; if it remains empty, use log_id to inspect the thumbnail generation chain")
+					if logID != "" {
+						thumbErr = thumbErr.WithLogID(logID)
+					}
+					return thumbErr
+				}
 			}
 			runtime.Out(out, nil)
 			return nil
 		},
 	}
+}
+
+func thumbnailFailures(out interface{}) []string {
+	root, ok := out.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	sheets, _ := root["sheets"].([]interface{})
+	var failures []string
+	for _, rawSheet := range sheets {
+		sheet, _ := rawSheet.(map[string]interface{})
+		charts, _ := sheet["charts"].([]interface{})
+		for _, rawChart := range charts {
+			chart, _ := rawChart.(map[string]interface{})
+			chartID, _ := chart["chart_id"].(string)
+			if strings.TrimSpace(chartID) == "" {
+				chartID = "<unknown>"
+			}
+			details, _ := chart["details"].(map[string]interface{})
+			thumbnail, _ := details["thumbnail"].(map[string]interface{})
+			encoded, _ := thumbnail["base64"].(string)
+			if strings.TrimSpace(encoded) != "" {
+				continue
+			}
+			status, _ := thumbnail["status"].(string)
+			if strings.TrimSpace(status) != "" {
+				chartID += " (status=" + status + ")"
+			}
+			failures = append(failures, chartID)
+		}
+	}
+	return failures
 }
 
 func objectListInput(runtime *common.RuntimeContext, token, sheetID, sheetName string, spec objectListSpec) map[string]interface{} {

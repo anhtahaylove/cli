@@ -68,12 +68,28 @@ func callTool(
 	toolName string,
 	input map[string]interface{},
 ) (interface{}, error) {
+	out, _, err := callToolWithLogID(ctx, runtime, token, kind, toolName, input)
+	return out, err
+}
+
+// callToolWithLogID is callTool plus the OpenAPI request LogID. Most callers
+// intentionally discard successful-response transport metadata. A caller that
+// validates a business-level payload (for example rendered thumbnails) can use
+// the LogID when the API envelope succeeded but the requested artifact did not.
+func callToolWithLogID(
+	ctx context.Context,
+	runtime *common.RuntimeContext,
+	token string,
+	kind ToolKind,
+	toolName string,
+	input map[string]interface{},
+) (interface{}, string, error) {
 	body, err := buildToolBody(toolName, input)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	data, err := callToolWithTransientRetry(ctx, runtime, token, kind, body)
+	data, logID, err := callToolWithTransientRetry(ctx, runtime, token, kind, body)
 	if err != nil {
 		// A classified business error (non-zero API code) carries the tool's
 		// own code and raw msg. Rewrite the typed error in place: the Message
@@ -99,19 +115,23 @@ func callTool(
 			p.Message = fmt.Sprintf("tool %q failed: [%d] %s", toolName, p.Code, flat)
 			annotateMergedRegionConflict(p)
 		}
-		return nil, err
+		return nil, logID, err
 	}
 	rawOutput, _ := data["output"].(string)
 	if rawOutput == "" {
-		return nil, nil
+		return nil, logID, nil
 	}
 
 	var out interface{}
 	if err := json.Unmarshal([]byte(rawOutput), &out); err != nil {
-		return nil, errs.NewInternalError(errs.SubtypeInvalidResponse,
+		decodeErr := errs.NewInternalError(errs.SubtypeInvalidResponse,
 			"tool %q returned invalid JSON output: %v", toolName, err).WithCause(err)
+		if logID != "" {
+			decodeErr = decodeErr.WithLogID(logID)
+		}
+		return nil, logID, decodeErr
 	}
-	return out, nil
+	return out, logID, nil
 }
 
 // mergedRegionBoundsRE matches the 0-based bounds the backend prints for the
@@ -201,29 +221,30 @@ func callToolWithTransientRetry(
 	token string,
 	kind ToolKind,
 	body map[string]interface{},
-) (map[string]interface{}, error) {
+) (map[string]interface{}, string, error) {
 	attempts := 1
 	if kind == ToolKindRead {
 		attempts = readRetryAttempts
 	}
 	backoff := readRetryBackoff
 	var data map[string]interface{}
+	var logID string
 	var err error
 	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
-				return data, err
+				return data, logID, err
 			case <-time.After(backoff):
 			}
 			backoff *= 2
 		}
-		data, err = runtime.CallAPITyped("POST", toolInvokePath(token, kind), nil, body)
+		data, logID, err = runtime.CallAPITypedWithLogID("POST", toolInvokePath(token, kind), nil, body)
 		if err == nil || !isTransientToolFailure(err) {
-			return data, err
+			return data, logID, err
 		}
 	}
-	return data, err
+	return data, logID, err
 }
 
 // isTransientToolFailure reports whether an error is worth reissuing an

@@ -330,15 +330,39 @@ func (ctx *RuntimeContext) Changed(name string) bool {
 // so log_id surfaces on the typed error even when the server returns it only in
 // the header.
 func (ctx *RuntimeContext) CallAPITyped(method, url string, params map[string]interface{}, data interface{}) (map[string]interface{}, error) {
+	out, _, err := ctx.CallAPITypedWithLogID(method, url, params, data)
+	return out, err
+}
+
+// CallAPITypedWithLogID is CallAPITyped plus the request LogID carried by the
+// response. Successful API envelopes normally keep transport metadata out of
+// their data payload, but a caller that validates a business-level result may
+// still need the LogID when a nominally successful response is incomplete.
+func (ctx *RuntimeContext) CallAPITypedWithLogID(method, url string, params map[string]interface{}, data interface{}) (map[string]interface{}, string, error) {
 	ac, err := ctx.getAPIClient()
 	if err != nil {
-		return nil, typedOrInternal(err)
+		return nil, "", typedOrInternal(err)
 	}
 	resp, err := ac.DoAPI(ctx.ctx, ctx.buildRequest(method, url, params, data))
 	if err != nil {
-		return nil, typedOrInternal(err)
+		return nil, "", typedOrInternal(err)
 	}
-	return ctx.ClassifyAPIResponse(resp)
+	logID, _ := logIDFromHeader(resp)["log_id"].(string)
+	if logID == "" {
+		var envelope struct {
+			LogID string `json:"log_id"`
+		}
+		if json.Unmarshal(resp.RawBody, &envelope) == nil {
+			logID = envelope.LogID
+		}
+	}
+	out, classifyErr := ctx.ClassifyAPIResponse(resp)
+	if logID == "" {
+		if p, ok := errs.ProblemOf(classifyErr); ok {
+			logID = p.LogID
+		}
+	}
+	return out, logID, classifyErr
 }
 
 // ClassifyAPIResponse turns a raw *larkcore.ApiResp into the "data" object or a

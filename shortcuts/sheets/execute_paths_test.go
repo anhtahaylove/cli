@@ -38,6 +38,52 @@ func TestExecute_WorkbookInfo_Happy(t *testing.T) {
 	}
 }
 
+func TestExecute_ChartListOnlyThumbnail_EmptyReportsHeaderLogID(t *testing.T) {
+	t.Parallel()
+	stub := toolOutputStub(testToken, "read", `{"sheets":[{"sheet_id":"shtSubA","charts":[{"chart_id":"chart-empty","details":{}}]}]}`)
+	stub.Headers = http.Header{
+		"Content-Type": []string{"application/json"},
+		"X-Tt-Logid":   []string{"thumbnail-log-123"},
+	}
+
+	_, _, err := runShortcutCapturingErrWithStubs(t, ChartList, []string{
+		"--url", testURL,
+		"--sheet-id", testSheetID,
+		"--chart-id", "chart-empty",
+		"--only-thumbnail",
+	}, stub)
+	p := requireProblem(t, err, errs.CategoryAPI, errs.SubtypeServerError, "no usable thumbnail")
+	if p.LogID != "thumbnail-log-123" {
+		t.Errorf("LogID = %q, want thumbnail-log-123", p.LogID)
+	}
+	if !p.Retryable {
+		t.Error("empty thumbnail response should be retryable")
+	}
+}
+
+func TestExecute_ChartListOnlyThumbnail_ValidThumbnailSucceeds(t *testing.T) {
+	t.Parallel()
+	stub := toolOutputStub(testToken, "read", `{"sheets":[{"sheet_id":"shtSubA","charts":[{"chart_id":"chart-ok","details":{"thumbnail":{"base64":"aGVsbG8=","mime_type":"image/png"}}}]}]}`)
+	stub.Headers = http.Header{
+		"Content-Type": []string{"application/json"},
+		"X-Tt-Logid":   []string{"thumbnail-log-ok"},
+	}
+
+	out, err := runShortcutWithStubs(t, ChartList, []string{
+		"--url", testURL,
+		"--sheet-id", testSheetID,
+		"--chart-id", "chart-ok",
+		"--only-thumbnail",
+	}, stub)
+	if err != nil {
+		t.Fatalf("execute failed: %v\nout=%s", err, out)
+	}
+	data := decodeEnvelopeData(t, out)
+	if _, leaked := data["log_id"]; leaked {
+		t.Errorf("successful thumbnail output must not leak transport log_id: %v", data)
+	}
+}
+
 // TestExecute_WorkbookInfo_ToolError surfaces a non-zero code in the
 // envelope shape and asserts CLI returns an error envelope.
 func TestExecute_WorkbookInfo_ToolError(t *testing.T) {
