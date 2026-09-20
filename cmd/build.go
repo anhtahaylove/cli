@@ -69,7 +69,7 @@ type buildConfig struct {
 }
 
 // buildRuntime owns presentation state for exactly one command tree. Factory
-// remains the business dependency container; distribution policy never enters
+// remains the business dependency container; distribution presentation never enters
 // it. The embedded pointer preserves convenient access to Factory fields in
 // cmd-internal tests without exposing the surface plan to business packages.
 type buildRuntime struct {
@@ -580,6 +580,9 @@ func assembleInternal(
 		}
 	}
 
+	if len(pluginRules) > 0 {
+		f.LoginCommandAllowed = loginCommandEligibility(rootCmd)
+	}
 	// Presentation is an explicit host projection over the exact enforcement
 	// decisions. With no opt-in, legacy Restrict and YAML policy behavior is
 	// mechanically unchanged.
