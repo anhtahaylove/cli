@@ -16,6 +16,7 @@ import (
 )
 
 const candidateVerifyTimeout = 10 * time.Second
+const candidateOutputLimit = 4096
 
 // CandidateVerifier validates a staged executable before installation.
 type CandidateVerifier func(path, version string) error
@@ -90,15 +91,37 @@ func (c *Candidate) Install() (func(), error) {
 func VerifyCandidateVersion(path, version string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), candidateVerifyTimeout)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, path, "--version").Output() //nolint:gosec // path is a checksum-verified staged binary.
+	cmd := exec.CommandContext(ctx, path, "--version") //nolint:gosec // path is a checksum-verified staged binary.
+	// A descendant may inherit stdout after the candidate exits or is killed.
+	cmd.WaitDelay = time.Second
+	var output versionOutput
+	cmd.Stdout = &output
+	err := cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
 		return fmt.Errorf("binary verification timed out after %s", candidateVerifyTimeout)
 	}
 	if err != nil {
 		return fmt.Errorf("run --version: %w", err)
 	}
-	if strings.TrimSpace(string(output)) != "lark-cli version "+version {
-		return fmt.Errorf("binary reported %q, want version %q", strings.TrimSpace(string(output)), version)
+	if output.truncated {
+		return fmt.Errorf("binary --version output exceeds %d bytes", candidateOutputLimit)
+	}
+	if strings.TrimSpace(output.String()) != "lark-cli version "+version {
+		return fmt.Errorf("binary reported %q, want version %q", Truncate(strings.TrimSpace(output.String()), 256), version)
 	}
 	return nil
+}
+
+// versionOutput drains stdout without retaining unbounded candidate output.
+type versionOutput struct {
+	strings.Builder
+	truncated bool
+}
+
+func (b *versionOutput) Write(p []byte) (int, error) {
+	n := len(p)
+	keep := min(n, candidateOutputLimit-b.Len())
+	_, _ = b.Builder.Write(p[:keep])
+	b.truncated = b.truncated || keep < n
+	return n, nil
 }

@@ -74,8 +74,8 @@ func SyncSkills(ctx context.Context, manifest *Manifest, opts InstallOptions) er
 }
 
 // installError classifies commit-stage failures. Lock contention means a
-// concurrent update owns the transaction; everything else gets the generic
-// retry hint.
+// concurrent update owns the transaction; permission failures need a writable
+// destination rather than a forced retry.
 func installError(message string, err error) errs.TypedError {
 	if errors.Is(err, lockfile.ErrHeld) {
 		return errs.NewValidationError(errs.SubtypeFailedPrecondition,
@@ -83,8 +83,12 @@ func installError(message string, err error) errs.TypedError {
 			WithHint("Wait for it to finish, then retry.").
 			WithCause(err)
 	}
+	hint := "Resolve the reported installation error, then retry `lark-cli update`."
+	if errors.Is(err, os.ErrPermission) {
+		hint = "Check write permissions for the executable, Skills, and configuration directories, then retry `lark-cli update`."
+	}
 	return errs.NewInternalError(errs.SubtypeUnknown, "%s: %s", message, err).
-		WithHint("Retry with `lark-cli update --force`.").
+		WithHint(hint).
 		WithCause(err)
 }
 

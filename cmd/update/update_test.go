@@ -179,6 +179,9 @@ func TestManifestArtifactProtocolFailureUsesNetworkTaxonomy(t *testing.T) {
 func TestManifestUpdateRepairsSkillsWhenBinaryMatches(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HOME", root)
+	t.Setenv("USERPROFILE", root)
+	t.Setenv("CODEX_HOME", filepath.Join(root, "codex"))
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(root, "claude"))
 	configDir := filepath.Join(root, "config")
 	t.Setenv("LARKSUITE_CLI_CONFIG_DIR", configDir)
 	var archive bytes.Buffer
@@ -771,7 +774,7 @@ func TestReportError(t *testing.T) {
 
 	t.Run("json mode prints envelope and exits bare with typed code", func(t *testing.T) {
 		f, stdout, _ := newTestFactory(t)
-		typed := errs.NewNetworkError(errs.SubtypeNetworkTransport, "failed to check latest version: timeout")
+		typed := errs.NewNetworkError(errs.SubtypeNetworkTransport, "failed to check latest version: timeout").WithHint("Check connectivity and retry.")
 		err := reportError(&UpdateOptions{JSON: true}, f.IOStreams, "network", typed)
 		var bareErr *output.BareError
 		if !errors.As(err, &bareErr) {
@@ -786,6 +789,12 @@ func TestReportError(t *testing.T) {
 		}
 		if !strings.Contains(out, "failed to check latest version: timeout") {
 			t.Errorf("JSON envelope missing message, got: %s", out)
+		}
+		var envelope struct {
+			Error struct{ Hint string } `json:"error"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &envelope); err != nil || envelope.Error.Hint != typed.ProblemDetail().Hint {
+			t.Fatalf("JSON hint not preserved: %s (%v)", out, err)
 		}
 	})
 }

@@ -62,8 +62,8 @@ func TestInitForSourceNoticesAtSameVersionWhenSourceChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	InitForSource("1.0.21", "manifest:second", true)
-	if got := GetPending(); got == nil {
-		t.Fatal("GetPending() = nil, want notice for a changed Skills source")
+	if got := GetPending(); got == nil || !got.SourceChanged || got.Message() != "lark-cli skills were installed from a different distribution source, run: lark-cli update" {
+		t.Fatalf("want source-change notice, got %+v", got)
 	}
 }
 

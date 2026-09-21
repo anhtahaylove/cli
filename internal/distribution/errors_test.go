@@ -6,10 +6,23 @@ package distribution
 import (
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/larksuite/cli/errs"
 )
+
+func TestInstallErrorPermissionHint(t *testing.T) {
+	cause := &os.PathError{Op: "rename", Path: "/example/cli", Err: os.ErrPermission}
+	got := installError("cannot install", cause)
+	p := got.ProblemDetail()
+	if p.Category != errs.CategoryInternal || p.Subtype != errs.SubtypeUnknown || !errors.Is(got, cause) {
+		t.Fatalf("error contract changed: %+v", got)
+	}
+	if !strings.Contains(p.Hint, "write permissions") || strings.Contains(p.Hint, "--force") {
+		t.Fatalf("permission hint = %q", p.Hint)
+	}
+}
 
 func TestClassifyArtifactError(t *testing.T) {
 	for _, tt := range []struct {

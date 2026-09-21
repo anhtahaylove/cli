@@ -40,5 +40,6 @@ func InitForSource(currentVersion, sourceIdentity string, exactTarget bool) {
 		Current:         state.Version,
 		Target:          currentVersion,
 		OfficialUnknown: state.OfficialSkillsUnknown,
+		SourceChanged:   !MatchesSource(state, sourceIdentity),
 	})
 }

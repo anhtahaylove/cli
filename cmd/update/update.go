@@ -253,7 +253,12 @@ func reportErrorWithFields(opts *UpdateOptions, io *cmdutil.IOStreams, errType s
 			out[key] = value
 		}
 		out["ok"] = false
-		out["error"] = map[string]interface{}{"type": errType, "message": typedErr.ProblemDetail().Message}
+		problem := typedErr.ProblemDetail()
+		detail := map[string]interface{}{"type": errType, "message": problem.Message}
+		if problem.Hint != "" {
+			detail["hint"] = problem.Hint
+		}
+		out["error"] = detail
 		output.PrintJson(io.Out, out)
 		return output.ErrBare(output.ExitCodeOf(typedErr))
 	}
