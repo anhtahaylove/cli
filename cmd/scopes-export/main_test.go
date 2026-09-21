@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -103,6 +104,65 @@ func TestBuildAndMarshal_MatchesGolden(t *testing.T) {
 		if !bytes.Equal(got, want) {
 			t.Errorf("%s output differs from golden (catalog change requires regenerating golden and syncing the downstream baseline)", brand)
 		}
+	}
+}
+
+// TestRun_OutputFileMatchesGolden exercises run() through the --output path
+// (SafeOutputPath + vfs.WriteFile) and asserts the written bytes match the
+// golden — the end-to-end path that the byte-exact contract depends on. The
+// output dir is under /tmp because SafeOutputPath's allowlist is cwd / /tmp /
+// ~/files.
+func TestRun_OutputFileMatchesGolden(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "scopes-export-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	for _, brand := range []string{"feishu", "lark"} {
+		out := filepath.Join(dir, brand+".json")
+		if err := run(brand, "GOLDEN_VERSION", out); err != nil {
+			t.Fatalf("run %s: %v", brand, err)
+		}
+		got, err := os.ReadFile(out)
+		if err != nil {
+			t.Fatalf("read output %s: %v", brand, err)
+		}
+		want, err := os.ReadFile("testdata/" + brand + ".golden.json")
+		if err != nil {
+			t.Fatalf("read golden %s: %v", brand, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("%s --output bytes differ from golden", brand)
+		}
+	}
+}
+
+// TestPackageJSONVersion covers the version-fallback source: it reads
+// ./package.json only when it is the CLI's own manifest, and returns "" when the
+// file is absent or belongs to a different package.
+func TestPackageJSONVersion(t *testing.T) {
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(orig) }()
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	if v := packageJSONVersion(); v != "" {
+		t.Errorf("absent package.json: got %q, want empty", v)
+	}
+	if err := os.WriteFile("package.json", []byte(`{"name":"other","version":"1.0.0"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if v := packageJSONVersion(); v != "" {
+		t.Errorf("foreign package.json: got %q, want empty", v)
+	}
+	if err := os.WriteFile("package.json", []byte(`{"name":"@larksuite/cli","version":"9.9.9"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if v := packageJSONVersion(); v != "9.9.9" {
+		t.Errorf("cli package.json: got %q, want 9.9.9", v)
 	}
 }
 
