@@ -61,7 +61,9 @@ func run(brand, version, outputPath string) error {
 	}
 
 	if outputPath == "" {
-		fmt.Print(string(data))
+		if _, err := os.Stdout.Write(data); err != nil {
+			return fmt.Errorf("failed to write scopes JSON to stdout: %w", err)
+		}
 		return nil
 	}
 	safe, err := validate.SafeOutputPath(outputPath)
