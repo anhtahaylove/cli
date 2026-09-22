@@ -80,6 +80,8 @@ func TestFetchCurrentPublished_MissingTokenTypesTreatedAsTenantCapable(t *testin
      "event_infos":[{"event_type":"im.chat.member.user.added_v1"}],
      "scopes":[
        {"scope":"im:chat.members:read"},
+       {"scope":"im:message:send_as_bot","token_types":null},
+       {"scope":""},
        {"scope":"contact:user:readonly","token_types":["user"]},
        {"scope":"im:message","token_types":[]}
      ]}
@@ -92,8 +94,8 @@ func TestFetchCurrentPublished_MissingTokenTypesTreatedAsTenantCapable(t *testin
 	if v == nil {
 		t.Fatal("expected a version, got nil")
 	}
-	if len(v.TenantScopes) != 1 || v.TenantScopes[0] != "im:chat.members:read" {
-		t.Fatalf("TenantScopes = %v, want only im:chat.members:read (missing token_types)", v.TenantScopes)
+	if got := strings.Join(v.TenantScopes, ","); got != "im:chat.members:read,im:message:send_as_bot" {
+		t.Fatalf("TenantScopes = %v, want scopes with missing or null token_types", v.TenantScopes)
 	}
 }
 
