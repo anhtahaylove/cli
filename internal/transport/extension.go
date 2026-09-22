@@ -67,6 +67,7 @@ func (e *resolvedExtension) wrap(base http.RoundTripper, class exttransport.Requ
 		Ext:      interceptor,
 		ExtName:  e.provider.Name(),
 		rewriter: rewriter,
+		platform: class == exttransport.RequestClassPlatform,
 	}
 }
 
@@ -84,6 +85,16 @@ type ExtensionMiddleware struct {
 	Ext      exttransport.Interceptor
 	ExtName  string
 	rewriter exttransport.URLRewriter
+	platform bool
+}
+
+type extensionPlatformKey struct{}
+
+// IsExtensionPlatformRequest reports routing intent captured before extension
+// hooks change the destination. External traffic never receives this marker.
+func IsExtensionPlatformRequest(req *http.Request) bool {
+	platform, _ := req.Context().Value(extensionPlatformKey{}).(bool)
+	return platform
 }
 
 // BaseRoundTripper returns the wrapped built-in transport chain.
@@ -106,6 +117,7 @@ func (m *ExtensionMiddleware) WithBaseRoundTripper(base http.RoundTripper) http.
 // the wrapped transport is called.
 func (m *ExtensionMiddleware) RoundTrip(req *http.Request) (*http.Response, error) {
 	origCtx := req.Context()
+	origCtx = context.WithValue(origCtx, extensionPlatformKey{}, m.platform)
 	logicalURL := req.URL.String()
 	req = req.Clone(origCtx)
 	if m.rewriter != nil {
@@ -164,6 +176,8 @@ type effectiveRequestError struct {
 	cause error
 	url   string
 }
+
+var _ urlrewrite.RequestError = (*effectiveRequestError)(nil)
 
 func (e *effectiveRequestError) Error() string               { return e.cause.Error() }
 func (e *effectiveRequestError) Unwrap() error               { return e.cause }

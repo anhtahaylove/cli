@@ -14,6 +14,7 @@ import (
 
 	"github.com/larksuite/cli/errs"
 	"github.com/larksuite/cli/internal/recovery"
+	"github.com/larksuite/cli/internal/urlrewrite"
 )
 
 // PartialFailureError is the exit signal for a batch / multi-status command that
@@ -92,7 +93,7 @@ func WriteTypedErrorEnvelope(w io.Writer, err error, identity string) bool {
 // payloads and the producer's error chain remain untouched.
 func withEffectiveRequestURL(err error) error {
 	var requestErr *url.Error
-	var effective interface{ EffectiveRequestURL() string }
+	var effective urlrewrite.RequestError
 	if !errors.As(err, &requestErr) || !errors.As(requestErr.Err, &effective) {
 		return err
 	}

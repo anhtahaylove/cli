@@ -86,11 +86,17 @@ func TestPersistentPreRunE_ConfigSubcommands(t *testing.T) {
 func TestRootLong_AgentSkillsLinkTargetsReadmeSection(t *testing.T) {
 	// The human skills-install guidance now lives in the root usage-template
 	// footer (below the command list), not in the agent-facing Long.
-	if !strings.Contains(rootUsageTemplate, "https://github.com/larksuite/cli#agent-skills") {
-		t.Fatalf("root help footer should link to the README Agent Skills section, got:\n%s", rootUsageTemplate)
+	_, root, _ := buildInternal(context.Background(), buildInvocationForTest(t), WithoutPlugins())
+	help := new(bytes.Buffer)
+	root.SetOut(help)
+	if err := root.Help(); err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(rootUsageTemplate, "https://github.com/larksuite/cli#install-ai-agent-skills") {
-		t.Fatalf("root help should not reference the removed install-ai-agent-skills anchor, got:\n%s", rootUsageTemplate)
+	if !strings.Contains(help.String(), "https://github.com/larksuite/cli#agent-skills") {
+		t.Fatalf("root help footer should link to the README Agent Skills section, got:\n%s", help)
+	}
+	if strings.Contains(help.String(), "https://github.com/larksuite/cli#install-ai-agent-skills") {
+		t.Fatalf("root help should not reference the removed install-ai-agent-skills anchor, got:\n%s", help)
 	}
 }
 
