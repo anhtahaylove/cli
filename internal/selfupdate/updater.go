@@ -359,6 +359,8 @@ func (u *Updater) RemoveGlobalSkills(names []string) *NpmResult {
 }
 
 func (u *Updater) runSkillsAdd(source string) *NpmResult {
+	// Sources include GitHub shorthand (e.g. larksuite/cli), not just URLs;
+	// rewriting here lets extensions replace the Skills source in either form.
 	return u.runSkillsCommand("-y", "skills", "add", urlrewrite.Rewrite(source), "-g", "-y")
 }
 
@@ -367,6 +369,7 @@ func (u *Updater) runSkillsListGlobal() *NpmResult {
 }
 
 func (u *Updater) runSkillsInstall(source string, nameList []string) *NpmResult {
+	// Like runSkillsAdd, rewrite source identifiers as well as full URLs.
 	args := []string{"-y", "skills", "add", urlrewrite.Rewrite(source), "-s"}
 	args = append(args, nameList...)
 	args = append(args, "-g", "-y")

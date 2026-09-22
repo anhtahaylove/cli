@@ -257,17 +257,23 @@ func TestSafeRedirectPolicyAllowsBodylessCrossOriginGetAndStripsCredentials(t *t
 }
 
 func TestSafeRedirectPolicyRejectsHTTPSDowngrade(t *testing.T) {
+	testurlrewrite.Register(t, func(raw string) string {
+		if strings.HasSuffix(raw, "/next") {
+			return strings.Replace(raw, "https://", "http://", 1)
+		}
+		return raw
+	})
 	original, err := http.NewRequest(http.MethodGet, "https://open.feishu.cn/start", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	redirect, err := http.NewRequest(http.MethodGet, "http://open.feishu.cn/next", nil)
+	redirect, err := http.NewRequest(http.MethodGet, "https://open.feishu.cn/next", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	err = safeRedirectPolicy(redirect, []*http.Request{original})
-	if err == nil || !strings.Contains(err.Error(), "HTTPS") {
+	if err == nil || err.Error() != "redirect from HTTPS to http is not allowed" {
 		t.Fatalf("safeRedirectPolicy() error = %v, want HTTPS downgrade rejection", err)
 	}
 	requireRedirectProblem(t, err, errs.CategoryPolicy, errs.SubtypeAccessDenied)

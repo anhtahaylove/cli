@@ -77,6 +77,9 @@ type ScopedProvider interface {
 // PreRoundTrip is called before the built-in chain. Use it to add custom
 // headers, rewrite the host, or start trace spans. Built-in decorators run
 // after this and will override any same-named security headers set here.
+// Platform requests routed through the extension remain eligible for built-in
+// risk-control metadata at the chosen destination. Device signals still honor
+// workspace policy; external requests do not inherit platform eligibility.
 // The extension must not replace req.Context() — the middleware restores
 // the original context after PreRoundTrip returns.
 //

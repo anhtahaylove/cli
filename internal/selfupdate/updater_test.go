@@ -193,6 +193,18 @@ func TestSkillsCommandsUseExpectedArgs(t *testing.T) {
 			want: "-y skills add http://mirror.example.test/lark-cli/skills/isolated -s lark-suite -y",
 		},
 		{
+			name: "install skill without rewriter",
+			run: func(u *Updater) *NpmResult {
+				return u.runSkillsInstall("larksuite/cli", []string{"lark-mail"})
+			},
+			want: "-y skills add larksuite/cli -s lark-mail -g -y",
+		},
+		{
+			name: "install all without rewriter",
+			run:  func(u *Updater) *NpmResult { return u.InstallAllSkills("larksuite/cli") },
+			want: "-y skills add larksuite/cli -g -y",
+		},
+		{
 			name: "list global",
 			run: func(u *Updater) *NpmResult {
 				return u.runSkillsListGlobal()

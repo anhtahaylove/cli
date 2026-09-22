@@ -10,6 +10,13 @@ import (
 	exttransport "github.com/larksuite/cli/extension/transport"
 )
 
+// RequestError exposes the effective, sanitized destination of a failed request.
+// Transport produces it; diagnostic and error output consume it.
+type RequestError interface {
+	error
+	EffectiveRequestURL() string
+}
+
 // ResolveProvider resolves the URL rewriter from provider. Providers that do
 // not implement URLRewriterProvider, and providers that return a nil rewriter,
 // resolve to nil. Callers that have already selected a provider should use

@@ -128,7 +128,7 @@ func safeRedirectPolicy(req *http.Request, via []*http.Request) error {
 		return errs.NewSecurityPolicyError(
 			errs.SubtypeAccessDenied,
 			"redirect from HTTPS to %s is not allowed",
-			req.URL.Scheme,
+			targetURL.Scheme,
 		)
 	}
 	if !sameRedirectOrigin(previousURL, targetURL) {

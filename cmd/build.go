@@ -432,7 +432,7 @@ func assembleInternal(
 	rootCmd.SetErr(cfg.streams.ErrOut)
 
 	// Root-only usage template (curated Usage synopsis + skills footer); see
-	// rootUsageTemplate.
+	// renderRootUsageTemplate.
 	rootCmd.SetUsageTemplate(renderRootUsageTemplate(nil))
 
 	rootCmd.SilenceErrors = true

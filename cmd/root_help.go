@@ -143,8 +143,6 @@ const skillsSetupFooter = `{{if not .HasParent}}
 
 Skills setup (one-time, humans): npx skills add larksuite/cli -g -y — %s{{end}}`
 
-var rootUsageTemplate = renderRootUsageTemplate(nil)
-
 func renderRootUsageTemplate(plan *surface.Plan) string {
 	var b strings.Builder
 	b.WriteString(rootUsageTemplatePrefix)

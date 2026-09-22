@@ -352,6 +352,10 @@ func TestHTTPPolicyRouterRejectsUnparsableRewriteBeforeBase(t *testing.T) {
 	if err == nil {
 		t.Fatal("RoundTrip() error = nil, want URL parse error")
 	}
+	var parseErr *url.Error
+	if !errors.As(err, &parseErr) || parseErr.Op != "parse" {
+		t.Fatalf("error = %v, want wrapped URL parse error", err)
+	}
 	if baseCalls != 0 {
 		t.Fatalf("base calls = %d, want 0", baseCalls)
 	}
