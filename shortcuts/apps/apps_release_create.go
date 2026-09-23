@@ -24,6 +24,7 @@ var AppsReleaseCreate = common.Shortcut{
 	Tips: []string{
 		"Example: lark-cli apps +release-create --app-id <app_id>",
 		"Example: lark-cli apps +release-create --app-id <app_id> --branch sprint/default --apply-reason \"release for production fix\" --dry-run",
+		"Tip: the first example is for HTML apps (no release reason); frontend/full_stack apps require --apply-reason as shown in the second example.",
 	},
 	Scopes:    []string{"spark:app:write"},
 	AuthTypes: []string{"user"},

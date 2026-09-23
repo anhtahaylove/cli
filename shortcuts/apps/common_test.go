@@ -333,9 +333,17 @@ func TestIsAppNoContainerError_NilProblem(t *testing.T) {
 	}
 }
 
-func TestAppNoContainerHintIncludesRequiredReleaseReason(t *testing.T) {
-	want := `lark-cli apps +release-create --app-id <app_id> --apply-reason "<release reason>"`
-	if !strings.Contains(appNoContainerHint, want) {
-		t.Fatalf("appNoContainerHint = %q, want it to contain %q", appNoContainerHint, want)
+func TestAppNoContainerHintRoutesThroughAppTypeAwareReleaseHelp(t *testing.T) {
+	for _, want := range []string{
+		`lark-cli apps +get --app-id <app_id> --jq '.data.app.app_type'`,
+		`lark-cli apps +release-create --help`,
+		"matching app-type example",
+	} {
+		if !strings.Contains(appNoContainerHint, want) {
+			t.Fatalf("appNoContainerHint = %q, want it to contain %q", appNoContainerHint, want)
+		}
+	}
+	if strings.Contains(appNoContainerHint, "--apply-reason") {
+		t.Fatalf("appNoContainerHint must not prescribe one reason policy before resolving app type: %q", appNoContainerHint)
 	}
 }

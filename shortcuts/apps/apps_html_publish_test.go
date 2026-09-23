@@ -605,6 +605,12 @@ func TestRunHTMLPublishTOS_RejectsFullStack(t *testing.T) {
 	if !strings.Contains(problem.Hint, "+release-create") {
 		t.Fatalf("hint should redirect to +release-create, got %q", problem.Hint)
 	}
+	if !strings.Contains(problem.Hint, "+release-create --help") || !strings.Contains(problem.Hint, "full_stack example") {
+		t.Fatalf("hint must route through the app-type-aware release help, got %q", problem.Hint)
+	}
+	if strings.Contains(problem.Hint, "--apply-reason") {
+		t.Fatalf("+html-publish must not own the release-reason policy, got %q", problem.Hint)
+	}
 }
 
 func TestRunHTMLPublishTOS_RejectsFrontend(t *testing.T) {
@@ -626,6 +632,12 @@ func TestRunHTMLPublishTOS_RejectsFrontend(t *testing.T) {
 	}
 	if !strings.Contains(problem.Message, "frontend") {
 		t.Fatalf("message should name the rejected app_type, got %q", problem.Message)
+	}
+	if !strings.Contains(problem.Hint, "+release-create --help") || !strings.Contains(problem.Hint, "frontend example") {
+		t.Fatalf("hint must route through the app-type-aware release help, got %q", problem.Hint)
+	}
+	if strings.Contains(problem.Hint, "--apply-reason") {
+		t.Fatalf("+html-publish must not own the release-reason policy, got %q", problem.Hint)
 	}
 }
 
@@ -739,6 +751,12 @@ func TestRunHTMLPublishTOS_ReleaseAppTypeErrorTranslated(t *testing.T) {
 	}
 	if !strings.Contains(problem.Hint, "+release-create") {
 		t.Fatalf("release-create app_type rejection should be translated to a +release-create hint, got %q", problem.Hint)
+	}
+	if !strings.Contains(problem.Hint, "+release-create --help") || !strings.Contains(problem.Hint, "confirm the current app type") {
+		t.Fatalf("release-create app_type rejection must route through app-type-aware help, got %q", problem.Hint)
+	}
+	if strings.Contains(problem.Hint, "--apply-reason") {
+		t.Fatalf("+html-publish must not own the release-reason policy, got %q", problem.Hint)
 	}
 }
 

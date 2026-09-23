@@ -136,19 +136,22 @@ func TestAppsReleaseCreateMeta(t *testing.T) {
 }
 
 func TestAppsReleaseCreateTipsDistinguishHTMLReasonPolicy(t *testing.T) {
-	var withReason, withoutReason bool
+	var withReason, withoutReason, policy bool
 	for _, tip := range AppsReleaseCreate.Tips {
-		if !strings.Contains(tip, "+release-create") {
-			continue
+		if strings.Contains(tip, "+release-create") {
+			if strings.Contains(tip, "--apply-reason") {
+				withReason = true
+			} else {
+				withoutReason = true
+			}
 		}
-		if strings.Contains(tip, "--apply-reason") {
-			withReason = true
-		} else {
-			withoutReason = true
+		if strings.Contains(tip, "first example is for HTML apps") && strings.Contains(tip, "no release reason") &&
+			strings.Contains(tip, "frontend/full_stack apps require --apply-reason") {
+			policy = true
 		}
 	}
-	if !withReason || !withoutReason {
-		t.Fatalf("tips must show both html without a reason and frontend/full_stack with a reason: %v", AppsReleaseCreate.Tips)
+	if !withReason || !withoutReason || !policy {
+		t.Fatalf("tips must label the HTML and frontend/full_stack reason policies explicitly: %v", AppsReleaseCreate.Tips)
 	}
 }
 
