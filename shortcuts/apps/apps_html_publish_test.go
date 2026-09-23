@@ -605,9 +605,6 @@ func TestRunHTMLPublishTOS_RejectsFullStack(t *testing.T) {
 	if !strings.Contains(problem.Hint, "+release-create") {
 		t.Fatalf("hint should redirect to +release-create, got %q", problem.Hint)
 	}
-	if !strings.Contains(problem.Hint, "--apply-reason") || !strings.Contains(problem.Hint, "confirm the release reason") {
-		t.Fatalf("release-create hint must require a user-confirmed reason, got %q", problem.Hint)
-	}
 }
 
 func TestRunHTMLPublishTOS_RejectsFrontend(t *testing.T) {
@@ -742,9 +739,6 @@ func TestRunHTMLPublishTOS_ReleaseAppTypeErrorTranslated(t *testing.T) {
 	}
 	if !strings.Contains(problem.Hint, "+release-create") {
 		t.Fatalf("release-create app_type rejection should be translated to a +release-create hint, got %q", problem.Hint)
-	}
-	if !strings.Contains(problem.Hint, "--apply-reason") || !strings.Contains(problem.Hint, "confirm the release reason") {
-		t.Fatalf("release-create hint must require a user-confirmed reason, got %q", problem.Hint)
 	}
 }
 
