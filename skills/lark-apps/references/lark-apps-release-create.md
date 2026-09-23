@@ -35,4 +35,4 @@ lark-cli apps +release-create --app-id app_xxx --branch sprint/default --apply-r
 3. **安全传参**：优先通过 structured argv 调用。仅有 shell 命令入口时，把理由安全引用为单个参数；不得把它插入 `eval`、`sh -c` 或任何会进行第二次解释的等价形式。
 4. **只确认一次**：把实际理由放进现有的一次高影响发布确认，说明将发布的目标和理由；确认后命令必须传入完全相同的理由文本。不要新增第二次理由确认。用户已明确预授权当前发布工作流时，不要再次打断。这里的确认只授权 Agent 发起本次 release，不代表当前用户完成或有权完成后续人工审批；实际审批由服务端配置的审批负责人处理。无论是否经过交互确认（包括预授权），执行结果都必须明确复述本次命令实际使用的完整理由。
 5. **只发布已推送代码**：`+release-create` 部署的是远端 `sprint/default` 上已 push 的代码，不是本地工作区。本地若有本轮修改，先 `git add`、`git commit` 并 `git push origin sprint/default`；命令中的理由必须与已确认文本一致。`git push` 如遇认证失败、401/403、credential helper 缺失或 token 过期，先执行 `lark-cli apps +git-credential-init --app-id <app_id> --as user` 刷新本地 Git 凭证，再重试原 git 命令；刷新凭证也失败时停止并报告，不要换路、手动复制 token 或修改 remote URL。
-6. **查询同一轮状态**：创建后保存返回的 `release_id`，按 [`+release-get`](lark-apps-release-get.md) 处理 publishing、等待审批负责人处理、finished、failed、rejected、canceled 和未知状态；不要创建另一轮 release 来代替状态查询。
+6. **查询同一轮状态**：创建后保存返回的 `release_id`，按 [`+release-get`](lark-apps-release-get.md) 处理 publishing、等待审批负责人处理、finished、failed 和未知状态；不要创建另一轮 release 来代替状态查询。
