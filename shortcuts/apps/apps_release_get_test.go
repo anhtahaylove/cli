@@ -381,9 +381,13 @@ func TestProjectReleaseDetailSnakeCaseProjection(t *testing.T) {
 		}},
 		"current_node_info": map[string]interface{}{
 			"current_node": "deploy", "current_status": "PENDING",
-			"result":       map[string]interface{}{"approval_url": "https://example.feishu.cn/approval/task/1"},
-			"submitted_by": map[string]interface{}{"username": "张三", "email": "zhangsan@example.com", "open_id": "ou_xxx"},
-			"created_at":   json.Number("1788264060"),
+			"result": map[string]interface{}{
+				"approval_url": "https://example.feishu.cn/approval/task/1", "future_result_field": "kept",
+			},
+			"submitted_by": map[string]interface{}{
+				"username": "张三", "email": "zhangsan@example.com", "open_id": "ou_xxx", "future_submitter_field": true,
+			},
+			"created_at": json.Number("1788264060"), "future_node_field": "kept",
 		},
 	}
 	before := cloneReleaseTestValue(t, data)
@@ -406,6 +410,12 @@ func TestProjectReleaseDetailSnakeCaseProjection(t *testing.T) {
 		projection.CurrentNode.SubmittedBy == nil || projection.CurrentNode.SubmittedBy.OpenID != "ou_xxx" ||
 		projection.CurrentNode.CreatedAt != json.Number("1788264060") {
 		t.Errorf("typed current node = %#v", projection.CurrentNode)
+	}
+	nodeJSON := got["current_node_info"].(map[string]interface{})
+	if nodeJSON["future_node_field"] != "kept" ||
+		nodeJSON["result"].(map[string]interface{})["future_result_field"] != "kept" ||
+		nodeJSON["submitted_by"].(map[string]interface{})["future_submitter_field"] != true {
+		t.Errorf("raw current node fields were not preserved: %#v", nodeJSON)
 	}
 	if !reflect.DeepEqual(releaseTestJSONMap(t, data), before) {
 		t.Errorf("projectReleaseDetail mutated input\nbefore=%#v\nafter=%#v", before, releaseTestJSONMap(t, data))
@@ -444,11 +454,11 @@ func TestProjectReleaseDetailOptionalNestedObjects(t *testing.T) {
 					t.Fatalf("node = %#v", node)
 				}
 				nodeJSON := got["current_node_info"].(map[string]interface{})
-				if _, ok := nodeJSON["result"]; ok {
-					t.Errorf("empty result leaked: %#v", nodeJSON)
+				if !reflect.DeepEqual(nodeJSON["result"], map[string]interface{}{"approval_url": ""}) {
+					t.Errorf("raw empty result was not preserved: %#v", nodeJSON)
 				}
-				if _, ok := nodeJSON["submitted_by"]; ok {
-					t.Errorf("empty submitted_by leaked: %#v", nodeJSON)
+				if !reflect.DeepEqual(nodeJSON["submitted_by"], map[string]interface{}{"username": "", "email": "", "open_id": ""}) {
+					t.Errorf("raw empty submitter was not preserved: %#v", nodeJSON)
 				}
 			},
 		},
@@ -484,12 +494,13 @@ func TestProjectReleaseDetailErrorLogsPresence(t *testing.T) {
 		name        string
 		data        map[string]interface{}
 		wantPresent bool
-		wantLen     int
+		want        interface{}
 	}{
 		{name: "missing", data: map[string]interface{}{"release_id": "1"}},
-		{name: "empty", data: map[string]interface{}{"release_id": "1", "error_logs": []interface{}{}}, wantPresent: true},
-		{name: "present wrong type", data: map[string]interface{}{"release_id": "1", "error_logs": nil}, wantPresent: true},
-		{name: "entry", data: map[string]interface{}{"release_id": "1", "error_logs": []interface{}{map[string]interface{}{"error_log": "boom", "code": 7}}}, wantPresent: true, wantLen: 1},
+		{name: "empty", data: map[string]interface{}{"release_id": "1", "error_logs": []interface{}{}}, wantPresent: true, want: []interface{}{}},
+		{name: "null", data: map[string]interface{}{"release_id": "1", "error_logs": nil}, wantPresent: true},
+		{name: "unexpected scalar", data: map[string]interface{}{"release_id": "1", "error_logs": "pending"}, wantPresent: true, want: "pending"},
+		{name: "entry", data: map[string]interface{}{"release_id": "1", "error_logs": []interface{}{map[string]interface{}{"error_log": "boom", "code": 7}}}, wantPresent: true, want: []interface{}{map[string]interface{}{"error_log": "boom", "code": json.Number("7")}}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -498,19 +509,141 @@ func TestProjectReleaseDetailErrorLogsPresence(t *testing.T) {
 			if present != tc.wantPresent {
 				t.Fatalf("error_logs present = %v, want %v; data=%#v", present, tc.wantPresent, got)
 			}
-			if present {
-				logs, ok := value.([]interface{})
-				if !ok || len(logs) != tc.wantLen {
-					t.Fatalf("error_logs = %#v, want len %d", value, tc.wantLen)
+			if present && !reflect.DeepEqual(value, tc.want) {
+				t.Fatalf("error_logs = %#v, want %#v", value, tc.want)
+			}
+		})
+	}
+}
+
+func TestProjectReleaseDetailFallsBackToNestedAuxiliaryFields(t *testing.T) {
+	projection := projectReleaseDetail(map[string]interface{}{
+		"release": map[string]interface{}{
+			"release_id": "nested", "status": "publishing",
+			"error_logs": nil,
+			"current_node_info": map[string]interface{}{
+				"current_node": "review", "current_status": "PENDING", "future_node_field": "kept",
+			},
+		},
+	})
+	got := releaseTestJSONMap(t, projection.Data)
+	if value, present := got["error_logs"]; !present || value != nil {
+		t.Fatalf("nested error_logs = %#v (present=%v), want preserved null", value, present)
+	}
+	node := got["current_node_info"].(map[string]interface{})
+	if node["future_node_field"] != "kept" {
+		t.Errorf("nested current_node_info lost unknown fields: %#v", node)
+	}
+	if projection.CurrentNode == nil || projection.CurrentNode.CurrentStatus != "PENDING" {
+		t.Fatalf("typed nested current node = %#v, want PENDING", projection.CurrentNode)
+	}
+}
+
+func TestProjectReleaseDetailOuterAuxiliaryFieldsTakePrecedence(t *testing.T) {
+	projection := projectReleaseDetail(map[string]interface{}{
+		"release": map[string]interface{}{
+			"release_id": "outer-wins", "status": "publishing",
+			"current_node_info": map[string]interface{}{"current_status": "INNER"},
+			"error_logs":        "inner",
+		},
+		"current_node_info": map[string]interface{}{"current_status": "PENDING", "source": "outer"},
+		"error_logs":        nil,
+	})
+	got := releaseTestJSONMap(t, projection.Data)
+	if got["error_logs"] != nil {
+		t.Errorf("outer null error_logs did not take precedence: %#v", got["error_logs"])
+	}
+	node := got["current_node_info"].(map[string]interface{})
+	if node["source"] != "outer" || projection.CurrentNode == nil || projection.CurrentNode.CurrentStatus != "PENDING" {
+		t.Errorf("outer current_node_info did not take precedence: data=%#v typed=%#v", node, projection.CurrentNode)
+	}
+}
+
+func TestAppsReleaseGetFormatsKeepReleaseWhenErrorLogsIsNull(t *testing.T) {
+	for _, format := range []string{"json", "table", "csv", "ndjson"} {
+		t.Run(format, func(t *testing.T) {
+			rctx, stdoutBuf, reg := newStatusRuntimeContext(t, "app_x", "null-logs")
+			rctx.Format = format
+			reg.Register(&httpmock.Stub{
+				Method: "GET", URL: "/open-apis/spark/v1/apps/app_x/releases/null-logs",
+				Body: map[string]interface{}{"code": 0, "msg": "", "data": map[string]interface{}{
+					"release": map[string]interface{}{
+						"release_id": "release_null_logs", "status": "publishing", "created_at": "10", "updated_at": "11",
+					},
+					"error_logs": nil,
+				}},
+			})
+			if err := AppsReleaseGet.Execute(context.Background(), rctx); err != nil {
+				t.Fatalf("Execute() = %v", err)
+			}
+
+			switch format {
+			case "json":
+				var env struct {
+					Data map[string]interface{} `json:"data"`
 				}
-				if tc.wantLen == 1 {
-					entry := logs[0].(map[string]interface{})
-					if entry["error_log"] != "boom" || entry["code"] != json.Number("7") {
-						t.Errorf("entry = %#v", entry)
+				if err := json.Unmarshal(stdoutBuf.Bytes(), &env); err != nil {
+					t.Fatalf("decode JSON: %v\n%s", err, stdoutBuf.String())
+				}
+				if env.Data["release_id"] != "release_null_logs" || env.Data["status"] != "publishing" {
+					t.Fatalf("JSON lost release fields: %#v", env.Data)
+				}
+				if value, present := env.Data["error_logs"]; !present || value != nil {
+					t.Fatalf("JSON error_logs = %#v (present=%v), want null", value, present)
+				}
+			case "ndjson":
+				var data map[string]interface{}
+				if err := json.Unmarshal(stdoutBuf.Bytes(), &data); err != nil {
+					t.Fatalf("decode NDJSON: %v\n%s", err, stdoutBuf.String())
+				}
+				if data["release_id"] != "release_null_logs" || data["status"] != "publishing" {
+					t.Fatalf("NDJSON lost release fields: %#v", data)
+				}
+			case "csv":
+				records, err := csv.NewReader(strings.NewReader(stdoutBuf.String())).ReadAll()
+				if err != nil {
+					t.Fatalf("decode CSV: %v\n%s", err, stdoutBuf.String())
+				}
+				values := map[string]string{}
+				for _, record := range records[1:] {
+					if len(record) == 2 {
+						values[record[0]] = record[1]
 					}
+				}
+				if values["release_id"] != "release_null_logs" || values["status"] != "publishing" {
+					t.Fatalf("CSV lost release fields: %#v\n%s", values, stdoutBuf.String())
+				}
+			case "table":
+				out := stdoutBuf.String()
+				if !strings.Contains(out, "release_id") || !strings.Contains(out, "release_null_logs") ||
+					!strings.Contains(out, "status") || !strings.Contains(out, "publishing") {
+					t.Fatalf("table lost release fields:\n%s", out)
 				}
 			}
 		})
+	}
+}
+
+func TestAppsReleaseGetPrettyUsesNestedPendingNode(t *testing.T) {
+	rctx, stdoutBuf, reg := newStatusRuntimeContext(t, "app_x", "nested-pending")
+	rctx.Format = "pretty"
+	reg.Register(&httpmock.Stub{
+		Method: "GET", URL: "/open-apis/spark/v1/apps/app_x/releases/nested-pending",
+		Body: map[string]interface{}{"code": 0, "msg": "", "data": map[string]interface{}{
+			"release": map[string]interface{}{
+				"release_id": "nested-pending", "status": "publishing", "created_at": "10", "updated_at": "11",
+				"current_node_info": map[string]interface{}{
+					"current_node": "review", "current_status": "PENDING",
+				},
+			},
+		}},
+	})
+	if err := AppsReleaseGet.Execute(context.Background(), rctx); err != nil {
+		t.Fatalf("Execute() = %v", err)
+	}
+	out := stdoutBuf.String()
+	if !strings.Contains(out, "current_node: review") || !strings.Contains(out, "current_status: PENDING") {
+		t.Fatalf("pretty output hid nested pending node:\n%s", out)
 	}
 }
 

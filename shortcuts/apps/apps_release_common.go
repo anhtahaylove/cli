@@ -50,7 +50,6 @@ type releaseDetailProjection struct {
 
 func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 	releaseRoot := data
-	outer := data
 	if release, ok := data["release"].(map[string]interface{}); ok {
 		releaseRoot = release
 	}
@@ -61,16 +60,18 @@ func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 	}
 
 	delete(out, "release")
-	delete(out, "error_logs")
-	delete(out, "current_node_info")
-
-	if logs, present := projectReleaseErrorLogs(outer); present {
+	if logs, present := releaseDetailAuxiliaryField(data, releaseRoot, "error_logs"); present {
 		out["error_logs"] = logs
+	} else {
+		delete(out, "error_logs")
 	}
-	currentNode := projectReleaseCurrentNodeInfo(outer)
-	if currentNode != nil {
-		out["current_node_info"] = currentNode
+	rawCurrentNode, currentNodePresent := releaseDetailAuxiliaryField(data, releaseRoot, "current_node_info")
+	if currentNodePresent {
+		out["current_node_info"] = rawCurrentNode
+	} else {
+		delete(out, "current_node_info")
 	}
+	currentNode := projectReleaseCurrentNodeInfo(rawCurrentNode)
 
 	return releaseDetailProjection{
 		Data:        out,
@@ -84,37 +85,19 @@ func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 	}
 }
 
-func projectReleaseErrorLogs(data map[string]interface{}) ([]interface{}, bool) {
-	raw, present := data["error_logs"]
-	if !present {
-		return nil, false
+// releaseDetailAuxiliaryField selects an auxiliary release field without
+// rewriting its wire shape. Newer responses put approval context and failure
+// logs next to the release object, while compatible responses may keep them
+// inside release. The outer value wins when both are present.
+func releaseDetailAuxiliaryField(outer, releaseRoot map[string]interface{}, key string) (interface{}, bool) {
+	if value, present := outer[key]; present {
+		return value, true
 	}
-	logs, ok := raw.([]interface{})
-	if !ok {
-		return []interface{}{}, true
-	}
-
-	out := make([]interface{}, 0, len(logs))
-	for _, log := range logs {
-		entry, ok := log.(map[string]interface{})
-		if !ok {
-			out = append(out, log)
-			continue
-		}
-		clone := make(map[string]interface{}, len(entry))
-		for key, value := range entry {
-			clone[key] = value
-		}
-		out = append(out, clone)
-	}
-	return out, true
+	value, present := releaseRoot[key]
+	return value, present
 }
 
-func projectReleaseCurrentNodeInfo(data map[string]interface{}) *releaseCurrentNodeInfo {
-	raw, present := data["current_node_info"]
-	if !present {
-		return nil
-	}
+func projectReleaseCurrentNodeInfo(raw interface{}) *releaseCurrentNodeInfo {
 	node, ok := raw.(map[string]interface{})
 	if !ok {
 		return nil
