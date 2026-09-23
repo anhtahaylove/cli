@@ -12,7 +12,6 @@
 - `--path` **必须是相对路径**（如 `./dist`、`./index.html`），不支持绝对路径。如果目标文件在其他目录，先 `cd` 到该目录再用相对路径，或用相对于当前目录的路径。
 - `--path` 可以是单个文件或目录；入口必须是 `index.html`。
 - 可选：`--allow-sensitive`，跳过凭据文件扫描。
-- HTML 发布不需要发布理由；命令没有 `--apply-reason`，内部 release 请求只发送上传得到的 `tos_path`。
 - 客户端打包 tar.gz 上传发布。三条硬性大小限制，任一超限即被客户端拒绝、无法发布：单个 `.html` 文件 ≤ 10MB、打包后 tar.gz ≤ 20MB、未压缩候选文件总量 ≤ 200MB。
 
 ## 示例
@@ -25,7 +24,7 @@ lark-cli apps +html-publish --app-id app_xxx --path ./index.html --dry-run
 
 ## 输出契约
 
-命令内部完成 tar.gz 打包 → TOS 上传 → 触发发布，返回 `data.release_id`。拿到 `release_id` 后用 `+release-get --app-id <app_id> --release-id <release_id>`，按 [`release-get` 状态规则](lark-apps-release-get.md) 处理 publishing、审批等待和各种终态；只有 `finished` 才从中读取 `online_url`。
+命令内部完成 tar.gz 打包 → TOS 上传 → 触发发布，返回 `data.release_id`。拿到 `release_id` 后用 `+release-get --app-id <app_id> --release-id <release_id>` 轮询发布状态直到 `finished`，从中读取 `online_url`。
 
 - 业务失败如构建失败、应用不存在通常带 `error.hint`；优先转述 hint。网络/服务端失败则建议稍后重试。
 
