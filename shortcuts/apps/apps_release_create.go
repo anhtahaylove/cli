@@ -113,14 +113,8 @@ type releaseCreateOutput struct {
 }
 
 func projectReleaseCreateData(data map[string]interface{}) releaseCreateOutput {
-	var releaseID string
-	if value, present := data["releaseID"]; present {
-		releaseID, _ = value.(string)
-	} else {
-		releaseID = common.GetString(data, "release_id")
-	}
 	return releaseCreateOutput{
-		ReleaseID: releaseID,
+		ReleaseID: common.GetString(data, "release_id"),
 		Status:    common.GetString(data, "status"),
 		Sync:      common.GetBool(data, "sync"),
 	}

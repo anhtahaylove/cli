@@ -98,11 +98,9 @@ func TestProjectReleaseCreateData(t *testing.T) {
 		data map[string]interface{}
 		want releaseCreateOutput
 	}{
-		{name: "camel", data: map[string]interface{}{"releaseID": "camel", "status": "done", "sync": true}, want: releaseCreateOutput{ReleaseID: "camel", Status: "done", Sync: true}},
-		{name: "legacy", data: map[string]interface{}{"release_id": "legacy", "status": "done", "sync": true}, want: releaseCreateOutput{ReleaseID: "legacy", Status: "done", Sync: true}},
-		{name: "camel wins", data: map[string]interface{}{"releaseID": "camel", "release_id": "legacy"}, want: releaseCreateOutput{ReleaseID: "camel"}},
-		{name: "empty camel wins", data: map[string]interface{}{"releaseID": "", "release_id": "legacy"}, want: releaseCreateOutput{}},
-		{name: "wrong type camel wins", data: map[string]interface{}{"releaseID": 42, "release_id": "legacy"}, want: releaseCreateOutput{}},
+		{name: "snake case", data: map[string]interface{}{"release_id": "release_1", "status": "done", "sync": true}, want: releaseCreateOutput{ReleaseID: "release_1", Status: "done", Sync: true}},
+		{name: "missing release id", data: map[string]interface{}{"status": "done"}, want: releaseCreateOutput{Status: "done"}},
+		{name: "unsupported camel case is not guessed", data: map[string]interface{}{"releaseID": "release_2", "status": "done"}, want: releaseCreateOutput{Status: "done"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -166,7 +164,7 @@ func TestAppsReleaseCreateRejectsDangerousUnicodeBeforePlanningOrRequest(t *test
 			stub := &httpmock.Stub{
 				Method:   "POST",
 				URL:      "/open-apis/spark/v1/apps/app_x/releases",
-				Body:     map[string]interface{}{"code": 0, "data": map[string]interface{}{"releaseID": "unexpected"}},
+				Body:     map[string]interface{}{"code": 0, "data": map[string]interface{}{"release_id": "unexpected"}},
 				Optional: true,
 			}
 			reg.Register(stub)
@@ -296,9 +294,9 @@ func TestAppsReleaseCreateExecute_Success(t *testing.T) {
 			"code": 0,
 			"msg":  "",
 			"data": map[string]interface{}{
-				"releaseID": "123",
-				"status":    "publishing",
-				"sync":      false,
+				"release_id": "123",
+				"status":     "publishing",
+				"sync":       false,
 			},
 		},
 	}
@@ -363,7 +361,7 @@ func TestAppsReleaseCreateExecute_OmitsEmptyBranch(t *testing.T) {
 		URL:    "/open-apis/spark/v1/apps/app_no_branch/releases",
 		Body: map[string]interface{}{
 			"code": 0,
-			"data": map[string]interface{}{"releaseID": "789"},
+			"data": map[string]interface{}{"release_id": "789"},
 		},
 	}
 	reg.Register(stub)

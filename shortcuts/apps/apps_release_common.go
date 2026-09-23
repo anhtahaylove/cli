@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/larksuite/cli/internal/output"
+	"github.com/larksuite/cli/shortcuts/common"
 )
 
 // Gateway paths for the spark app.release OpenAPI methods.
@@ -47,35 +48,6 @@ type releaseDetailProjection struct {
 	CurrentNode *releaseCurrentNodeInfo
 }
 
-func firstReleaseValue(data map[string]interface{}, keys ...string) (interface{}, bool) {
-	for _, key := range keys {
-		if value, ok := data[key]; ok {
-			return value, true
-		}
-	}
-	return nil, false
-}
-
-func firstReleaseString(data map[string]interface{}, keys ...string) (string, bool) {
-	value, present := firstReleaseValue(data, keys...)
-	if !present {
-		return "", false
-	}
-	text, _ := value.(string)
-	return text, true
-}
-
-func setReleaseAlias(out, source map[string]interface{}, canonical string, aliases ...string) {
-	value, present := firstReleaseValue(source, aliases...)
-	delete(out, canonical)
-	for _, alias := range aliases {
-		delete(out, alias)
-	}
-	if present {
-		out[canonical] = value
-	}
-}
-
 func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 	releaseRoot := data
 	outer := data
@@ -88,16 +60,8 @@ func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 		out[key] = value
 	}
 
-	setReleaseAlias(out, releaseRoot, "release_id", "releaseID", "release_id")
-	setReleaseAlias(out, releaseRoot, "created_at", "createdAt", "created_at")
-	setReleaseAlias(out, releaseRoot, "updated_at", "updatedAt", "updated_at")
-	setReleaseAlias(out, releaseRoot, "online_url", "onlineUrl", "online_url")
-	setReleaseAlias(out, releaseRoot, "commit_id", "commitID", "commit_id")
-
 	delete(out, "release")
-	delete(out, "errorLogs")
 	delete(out, "error_logs")
-	delete(out, "currentNodeInfo")
 	delete(out, "current_node_info")
 
 	if logs, present := projectReleaseErrorLogs(outer); present {
@@ -108,26 +72,20 @@ func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 		out["current_node_info"] = currentNode
 	}
 
-	createdAt, _ := firstReleaseValue(out, "created_at")
-	updatedAt, _ := firstReleaseValue(out, "updated_at")
-	releaseID, _ := firstReleaseString(out, "release_id")
-	status, _ := firstReleaseString(out, "status")
-	commitID, _ := firstReleaseString(out, "commit_id")
-	onlineURL, _ := firstReleaseString(out, "online_url")
 	return releaseDetailProjection{
 		Data:        out,
-		ReleaseID:   releaseID,
-		Status:      status,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
-		CommitID:    commitID,
-		OnlineURL:   onlineURL,
+		ReleaseID:   common.GetString(out, "release_id"),
+		Status:      common.GetString(out, "status"),
+		CreatedAt:   out["created_at"],
+		UpdatedAt:   out["updated_at"],
+		CommitID:    common.GetString(out, "commit_id"),
+		OnlineURL:   common.GetString(out, "online_url"),
 		CurrentNode: currentNode,
 	}
 }
 
 func projectReleaseErrorLogs(data map[string]interface{}) ([]interface{}, bool) {
-	raw, present := firstReleaseValue(data, "errorLogs", "error_logs")
+	raw, present := data["error_logs"]
 	if !present {
 		return nil, false
 	}
@@ -147,14 +105,13 @@ func projectReleaseErrorLogs(data map[string]interface{}) ([]interface{}, bool) 
 		for key, value := range entry {
 			clone[key] = value
 		}
-		setReleaseAlias(clone, entry, "error_log", "errorLog", "error_log")
 		out = append(out, clone)
 	}
 	return out, true
 }
 
 func projectReleaseCurrentNodeInfo(data map[string]interface{}) *releaseCurrentNodeInfo {
-	raw, present := firstReleaseValue(data, "currentNodeInfo", "current_node_info")
+	raw, present := data["current_node_info"]
 	if !present {
 		return nil
 	}
@@ -163,28 +120,26 @@ func projectReleaseCurrentNodeInfo(data map[string]interface{}) *releaseCurrentN
 		return nil
 	}
 
-	currentNode, _ := firstReleaseString(node, "currentNode", "current_node")
-	currentStatus, _ := firstReleaseString(node, "currentStatus", "current_status")
-	projection := &releaseCurrentNodeInfo{CurrentNode: currentNode, CurrentStatus: currentStatus}
-	if createdAt, ok := firstReleaseValue(node, "createdAt", "created_at"); ok {
+	projection := &releaseCurrentNodeInfo{
+		CurrentNode:   common.GetString(node, "current_node"),
+		CurrentStatus: common.GetString(node, "current_status"),
+	}
+	if createdAt, ok := node["created_at"]; ok {
 		projection.CreatedAt = createdAt
 	}
 
 	if rawResult, ok := node["result"].(map[string]interface{}); ok {
-		if approvalURL, _ := firstReleaseString(rawResult, "approvalURL", "approval_url"); approvalURL != "" {
+		if approvalURL := common.GetString(rawResult, "approval_url"); approvalURL != "" {
 			projection.Result = &releaseApprovalResult{ApprovalURL: approvalURL}
 		}
 	}
 
-	if rawSubmitter, present := firstReleaseValue(node, "submittedBy", "submitted_by"); present {
+	if rawSubmitter, present := node["submitted_by"]; present {
 		if submitter, ok := rawSubmitter.(map[string]interface{}); ok {
-			username, _ := firstReleaseString(submitter, "username")
-			email, _ := firstReleaseString(submitter, "email")
-			openID, _ := firstReleaseString(submitter, "openID", "open_id")
 			projected := &releaseSubmittedBy{
-				Username: username,
-				Email:    email,
-				OpenID:   openID,
+				Username: common.GetString(submitter, "username"),
+				Email:    common.GetString(submitter, "email"),
+				OpenID:   common.GetString(submitter, "open_id"),
 			}
 			if projected.Username != "" || projected.Email != "" || projected.OpenID != "" {
 				projection.SubmittedBy = projected

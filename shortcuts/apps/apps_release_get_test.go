@@ -393,42 +393,8 @@ func TestAppsReleaseGetJSONOnlineURLPassthrough(t *testing.T) {
 	}
 }
 
-func TestProjectReleaseDetailAliases(t *testing.T) {
-	idlCurrent := map[string]interface{}{
-		"release": map[string]interface{}{
-			"releaseID": "9001", "status": "publishing",
-			"createdAt": json.Number("1788264000000"), "updatedAt": json.Number("1788264060000"),
-			"onlineUrl": "https://example.feishu.cn/app/9001", "commitID": "abc123",
-			"future_field": "preserved",
-		},
-		"errorLogs": []interface{}{map[string]interface{}{
-			"step": "build", "errorLog": "compile error", "future_log_field": true,
-		}},
-		"currentNodeInfo": map[string]interface{}{
-			"current_node": "deploy", "current_status": "PENDING",
-			"result":       map[string]interface{}{"approval_url": "https://example.feishu.cn/approval/task/1"},
-			"submitted_by": map[string]interface{}{"username": "张三", "email": "zhangsan@example.com", "openID": "ou_xxx"},
-			"created_at":   json.Number("1788264060"),
-		},
-	}
-	goTagCamel := map[string]interface{}{
-		"release": map[string]interface{}{
-			"releaseID": "9001", "status": "publishing",
-			"createdAt": json.Number("1788264000000"), "updatedAt": json.Number("1788264060000"),
-			"onlineUrl": "https://example.feishu.cn/app/9001", "commitID": "abc123",
-			"future_field": "preserved",
-		},
-		"errorLogs": []interface{}{map[string]interface{}{
-			"step": "build", "errorLog": "compile error", "future_log_field": true,
-		}},
-		"currentNodeInfo": map[string]interface{}{
-			"currentNode": "deploy", "currentStatus": "PENDING",
-			"result":      map[string]interface{}{"approvalURL": "https://example.feishu.cn/approval/task/1"},
-			"submittedBy": map[string]interface{}{"username": "张三", "email": "zhangsan@example.com", "openID": "ou_xxx"},
-			"createdAt":   json.Number("1788264060"),
-		},
-	}
-	legacy := map[string]interface{}{
+func TestProjectReleaseDetailSnakeCaseProjection(t *testing.T) {
+	data := map[string]interface{}{
 		"release": map[string]interface{}{
 			"release_id": "9001", "status": "publishing",
 			"created_at": json.Number("1788264000000"), "updated_at": json.Number("1788264060000"),
@@ -445,86 +411,29 @@ func TestProjectReleaseDetailAliases(t *testing.T) {
 			"created_at":   json.Number("1788264060"),
 		},
 	}
-
-	idlData := releaseTestJSONMap(t, projectReleaseDetail(cloneReleaseTestValue(t, idlCurrent)).Data)
-	for _, tc := range []struct {
-		name string
-		data map[string]interface{}
-	}{
-		{name: "current IDL mixed aliases", data: idlCurrent},
-		{name: "Go tag camel aliases", data: goTagCamel},
-		{name: "legacy snake aliases", data: legacy},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			before := cloneReleaseTestValue(t, tc.data)
-			projection := projectReleaseDetail(tc.data)
-			got := releaseTestJSONMap(t, projection.Data)
-
-			if !reflect.DeepEqual(got, idlData) {
-				t.Fatalf("compatibility projection differs from current IDL:\ncompatibility=%#v\nIDL=%#v", got, idlData)
-			}
-			if got["release_id"] != "9001" || got["future_field"] != "preserved" {
-				t.Errorf("root fields = %#v", got)
-			}
-			assertNoReleaseCamelAliases(t, got)
-			if _, ok := got["release"]; ok {
-				t.Errorf("release wrapper leaked: %#v", got)
-			}
-			logs := got["error_logs"].([]interface{})
-			logEntry := logs[0].(map[string]interface{})
-			if logEntry["error_log"] != "compile error" || logEntry["future_log_field"] != true {
-				t.Errorf("error log = %#v", logEntry)
-			}
-			if projection.CurrentNode == nil || projection.CurrentNode.CurrentNode != "deploy" ||
-				projection.CurrentNode.CurrentStatus != "PENDING" || projection.CurrentNode.Result == nil ||
-				projection.CurrentNode.Result.ApprovalURL != "https://example.feishu.cn/approval/task/1" ||
-				projection.CurrentNode.SubmittedBy == nil || projection.CurrentNode.SubmittedBy.OpenID != "ou_xxx" ||
-				projection.CurrentNode.CreatedAt != json.Number("1788264060") {
-				t.Errorf("typed current node = %#v", projection.CurrentNode)
-			}
-			if !reflect.DeepEqual(releaseTestJSONMap(t, tc.data), before) {
-				t.Errorf("projectReleaseDetail mutated input\nbefore=%#v\nafter=%#v", before, releaseTestJSONMap(t, tc.data))
-			}
-		})
-	}
-}
-
-func TestProjectReleaseDetailCamelPresenceWins(t *testing.T) {
-	data := map[string]interface{}{
-		"release": map[string]interface{}{
-			"releaseID": "", "release_id": "legacy-release",
-			"createdAt": nil, "created_at": json.Number("1"),
-			"commitID": 42, "commit_id": "legacy-commit",
-			"status": "failed",
-		},
-		"errorLogs": []interface{}{map[string]interface{}{
-			"errorLog": nil, "error_log": "legacy error", "extra": "kept",
-		}},
-		"error_logs":        []interface{}{map[string]interface{}{"error_log": "outer legacy"}},
-		"currentNodeInfo":   "wrong type",
-		"current_node_info": map[string]interface{}{"current_node": "legacy node"},
-	}
+	before := cloneReleaseTestValue(t, data)
 	projection := projectReleaseDetail(data)
 	got := releaseTestJSONMap(t, projection.Data)
-	if value, ok := got["release_id"]; !ok || value != "" {
-		t.Errorf("release_id = %#v, present=%v; camel presence must win", value, ok)
+	if got["release_id"] != "9001" || got["future_field"] != "preserved" {
+		t.Errorf("root fields = %#v", got)
 	}
-	if value, ok := got["created_at"]; !ok || value != nil {
-		t.Errorf("created_at = %#v, present=%v; camel nil must win", value, ok)
-	}
-	if value := got["commit_id"]; value != json.Number("42") {
-		t.Errorf("commit_id = %#v; camel wrong type must win", value)
+	if _, ok := got["release"]; ok {
+		t.Errorf("release wrapper leaked: %#v", got)
 	}
 	logs := got["error_logs"].([]interface{})
-	entry := logs[0].(map[string]interface{})
-	if value, ok := entry["error_log"]; !ok || value != nil || entry["extra"] != "kept" {
-		t.Errorf("error log aliases = %#v", entry)
+	logEntry := logs[0].(map[string]interface{})
+	if logEntry["error_log"] != "compile error" || logEntry["future_log_field"] != true {
+		t.Errorf("error log = %#v", logEntry)
 	}
-	if projection.CurrentNode != nil {
-		t.Errorf("camel wrong-type currentNodeInfo must block snake fallback: %#v", projection.CurrentNode)
+	if projection.CurrentNode == nil || projection.CurrentNode.CurrentNode != "deploy" ||
+		projection.CurrentNode.CurrentStatus != "PENDING" || projection.CurrentNode.Result == nil ||
+		projection.CurrentNode.Result.ApprovalURL != "https://example.feishu.cn/approval/task/1" ||
+		projection.CurrentNode.SubmittedBy == nil || projection.CurrentNode.SubmittedBy.OpenID != "ou_xxx" ||
+		projection.CurrentNode.CreatedAt != json.Number("1788264060") {
+		t.Errorf("typed current node = %#v", projection.CurrentNode)
 	}
-	if _, ok := got["current_node_info"]; ok {
-		t.Errorf("unusable current node must be omitted: %#v", got)
+	if !reflect.DeepEqual(releaseTestJSONMap(t, data), before) {
+		t.Errorf("projectReleaseDetail mutated input\nbefore=%#v\nafter=%#v", before, releaseTestJSONMap(t, data))
 	}
 }
 
@@ -550,9 +459,9 @@ func TestProjectReleaseDetailOptionalNestedObjects(t *testing.T) {
 			name: "empty result and submitter omitted",
 			data: map[string]interface{}{
 				"release_id": "2",
-				"currentNodeInfo": map[string]interface{}{
-					"currentNode": "review", "result": map[string]interface{}{"approvalURL": ""},
-					"submittedBy": map[string]interface{}{"username": "", "email": "", "openID": ""},
+				"current_node_info": map[string]interface{}{
+					"current_node": "review", "result": map[string]interface{}{"approval_url": ""},
+					"submitted_by": map[string]interface{}{"username": "", "email": "", "open_id": ""},
 				},
 			},
 			check: func(t *testing.T, got map[string]interface{}, node *releaseCurrentNodeInfo) {
@@ -603,9 +512,9 @@ func TestProjectReleaseDetailErrorLogsPresence(t *testing.T) {
 		wantLen     int
 	}{
 		{name: "missing", data: map[string]interface{}{"release_id": "1"}},
-		{name: "empty", data: map[string]interface{}{"release_id": "1", "errorLogs": []interface{}{}}, wantPresent: true},
-		{name: "present wrong type", data: map[string]interface{}{"release_id": "1", "errorLogs": nil}, wantPresent: true},
-		{name: "entry", data: map[string]interface{}{"release_id": "1", "errorLogs": []interface{}{map[string]interface{}{"errorLog": "boom", "code": 7}}}, wantPresent: true, wantLen: 1},
+		{name: "empty", data: map[string]interface{}{"release_id": "1", "error_logs": []interface{}{}}, wantPresent: true},
+		{name: "present wrong type", data: map[string]interface{}{"release_id": "1", "error_logs": nil}, wantPresent: true},
+		{name: "entry", data: map[string]interface{}{"release_id": "1", "error_logs": []interface{}{map[string]interface{}{"error_log": "boom", "code": 7}}}, wantPresent: true, wantLen: 1},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -637,14 +546,14 @@ func TestAppsReleaseGetPrettyPendingApprovalContext(t *testing.T) {
 		Method: "GET", URL: "/open-apis/spark/v1/apps/app_x/releases/pending",
 		Body: map[string]interface{}{"code": 0, "msg": "", "data": map[string]interface{}{
 			"release": map[string]interface{}{
-				"releaseID": "release_new", "status": "publishing",
-				"createdAt": json.Number("1788264000000"), "updatedAt": json.Number("1788264060000"), "commitID": "abc123",
+				"release_id": "release_new", "status": "publishing",
+				"created_at": json.Number("1788264000000"), "updated_at": json.Number("1788264060000"), "commit_id": "abc123",
 			},
-			"currentNodeInfo": map[string]interface{}{
-				"currentNode": "deploy", "currentStatus": "PENDING",
-				"result":      map[string]interface{}{"approvalURL": "https://example.feishu.cn/approval/task/1"},
-				"submittedBy": map[string]interface{}{"username": "张三", "email": "zhangsan@example.com", "openID": "ou_xxx"},
-				"createdAt":   json.Number("1788264060"),
+			"current_node_info": map[string]interface{}{
+				"current_node": "deploy", "current_status": "PENDING",
+				"result":       map[string]interface{}{"approval_url": "https://example.feishu.cn/approval/task/1"},
+				"submitted_by": map[string]interface{}{"username": "张三", "email": "zhangsan@example.com", "open_id": "ou_xxx"},
+				"created_at":   json.Number("1788264060"),
 			},
 		}},
 	})
@@ -690,7 +599,7 @@ func TestAppsReleaseGetPrettyNodeWithoutApprovalURL(t *testing.T) {
 	}
 }
 
-func TestAppsReleaseGetExecuteFormatsUseNormalizedData(t *testing.T) {
+func TestAppsReleaseGetExecuteFormatsUseProjectedData(t *testing.T) {
 	for _, format := range []string{"json", "pretty", "table", "csv", "ndjson"} {
 		t.Run(format, func(t *testing.T) {
 			rctx, stdoutBuf, reg := newStatusRuntimeContext(t, "app_x", "formats")
@@ -699,11 +608,11 @@ func TestAppsReleaseGetExecuteFormatsUseNormalizedData(t *testing.T) {
 				Method: "GET", URL: "/open-apis/spark/v1/apps/app_x/releases/formats",
 				Body: map[string]interface{}{"code": 0, "msg": "", "data": map[string]interface{}{
 					"release": map[string]interface{}{
-						"releaseID": "release_formats", "status": "publishing", "createdAt": "10", "updatedAt": "11", "unknown": "kept",
+						"release_id": "release_formats", "status": "publishing", "created_at": "10", "updated_at": "11", "unknown": "kept",
 					},
-					"currentNodeInfo": map[string]interface{}{
-						"currentNode": "review", "currentStatus": "PENDING",
-						"result": map[string]interface{}{"approvalURL": "https://example.feishu.cn/approval/task/2"},
+					"current_node_info": map[string]interface{}{
+						"current_node": "review", "current_status": "PENDING",
+						"result": map[string]interface{}{"approval_url": "https://example.feishu.cn/approval/task/2"},
 					},
 				}},
 			})
@@ -711,11 +620,6 @@ func TestAppsReleaseGetExecuteFormatsUseNormalizedData(t *testing.T) {
 				t.Fatalf("Execute() = %v", err)
 			}
 			out := stdoutBuf.String()
-			for _, camel := range []string{"releaseID", "createdAt", "updatedAt", "errorLogs", "errorLog", "currentNodeInfo", "currentNode", "currentStatus", "approvalURL"} {
-				if strings.Contains(out, camel) {
-					t.Errorf("%s output leaks %q:\n%s", format, camel, out)
-				}
-			}
 			for _, snake := range []string{"release_id", "created_at", "updated_at", "current_node", "current_status", "approval_url"} {
 				if !strings.Contains(out, snake) {
 					t.Errorf("%s output missing %q:\n%s", format, snake, out)
@@ -730,13 +634,13 @@ func TestAppsReleaseGetExecuteFormatsUseNormalizedData(t *testing.T) {
 				if err := json.Unmarshal(stdoutBuf.Bytes(), &env); err != nil {
 					t.Fatalf("decode JSON: %v", err)
 				}
-				assertNormalizedReleaseFormatData(t, env.Data)
+				assertProjectedReleaseFormatData(t, env.Data)
 			case "ndjson":
 				var data map[string]interface{}
 				if err := json.Unmarshal(stdoutBuf.Bytes(), &data); err != nil {
 					t.Fatalf("decode NDJSON: %v", err)
 				}
-				assertNormalizedReleaseFormatData(t, data)
+				assertProjectedReleaseFormatData(t, data)
 			case "csv":
 				records, err := csv.NewReader(strings.NewReader(out)).ReadAll()
 				if err != nil {
@@ -748,11 +652,11 @@ func TestAppsReleaseGetExecuteFormatsUseNormalizedData(t *testing.T) {
 				}
 				if keys["release_id"] != "release_formats" || keys["unknown"] != "kept" ||
 					keys["current_node_info.result.approval_url"] != "https://example.feishu.cn/approval/task/2" {
-					t.Errorf("CSV normalized values = %#v", keys)
+					t.Errorf("CSV projected values = %#v", keys)
 				}
 			case "table":
 				if !strings.Contains(out, "release_id") || !strings.Contains(out, "release_formats") || !strings.Contains(out, "unknown") || !strings.Contains(out, "kept") {
-					t.Errorf("table normalized output:\n%s", out)
+					t.Errorf("table projected output:\n%s", out)
 				}
 			}
 		})
@@ -776,16 +680,16 @@ func TestAppsReleaseGetPrettySanitizationIsDisplayOnly(t *testing.T) {
 	fixture := func() map[string]interface{} {
 		return map[string]interface{}{
 			"release": map[string]interface{}{
-				"releaseID": releaseID, "status": status, "createdAt": createdAt,
-				"updatedAt": updatedAt, "commitID": commitID,
+				"release_id": releaseID, "status": status, "created_at": createdAt,
+				"updated_at": updatedAt, "commit_id": commitID,
 			},
-			"currentNodeInfo": map[string]interface{}{
-				"currentNode": currentNode, "currentStatus": currentStatus,
-				"result": map[string]interface{}{"approvalURL": approvalURL},
-				"submittedBy": map[string]interface{}{
-					"username": username, "email": email, "openID": openID,
+			"current_node_info": map[string]interface{}{
+				"current_node": currentNode, "current_status": currentStatus,
+				"result": map[string]interface{}{"approval_url": approvalURL},
+				"submitted_by": map[string]interface{}{
+					"username": username, "email": email, "open_id": openID,
 				},
-				"createdAt": nodeCreatedAt,
+				"created_at": nodeCreatedAt,
 			},
 		}
 	}
@@ -823,8 +727,8 @@ func TestAppsReleaseGetPrettySanitizationIsDisplayOnly(t *testing.T) {
 
 	t.Run("online URL is sanitized", func(t *testing.T) {
 		projection := projectReleaseDetail(map[string]interface{}{
-			"releaseID": "release", "status": "finished", "createdAt": "10", "updatedAt": "11",
-			"onlineUrl": " https://example.feishu.cn/app\nonline_url: forged\t\x1b[2J ",
+			"release_id": "release", "status": "finished", "created_at": "10", "updated_at": "11",
+			"online_url": " https://example.feishu.cn/app\nonline_url: forged\t\x1b[2J ",
 		})
 		var out bytes.Buffer
 		writeReleaseDetailPretty(&out, projection)
@@ -878,10 +782,10 @@ func TestAppsReleaseGetFailedLogSanitizationIsDisplayOnly(t *testing.T) {
 	fixture := func() map[string]interface{} {
 		return map[string]interface{}{
 			"release": map[string]interface{}{
-				"releaseID": "failed-release", "status": "failed", "createdAt": "10", "updatedAt": "11",
+				"release_id": "failed-release", "status": "failed", "created_at": "10", "updated_at": "11",
 			},
-			"errorLogs": []interface{}{map[string]interface{}{
-				"step": step, "errorLog": errorLog,
+			"error_logs": []interface{}{map[string]interface{}{
+				"step": step, "error_log": errorLog,
 			}},
 		}
 	}
@@ -958,38 +862,11 @@ func TestReleasePrettyDisplayNilCompatibility(t *testing.T) {
 	}
 }
 
-func assertNormalizedReleaseFormatData(t *testing.T, data map[string]interface{}) {
+func assertProjectedReleaseFormatData(t *testing.T, data map[string]interface{}) {
 	t.Helper()
 	if data["release_id"] != "release_formats" || data["unknown"] != "kept" {
-		t.Errorf("normalized data = %#v", data)
+		t.Errorf("projected data = %#v", data)
 	}
-	assertNoReleaseCamelAliases(t, data)
-}
-
-func assertNoReleaseCamelAliases(t *testing.T, value interface{}) {
-	t.Helper()
-	camel := map[string]bool{
-		"releaseID": true, "createdAt": true, "updatedAt": true, "onlineUrl": true, "commitID": true,
-		"errorLogs": true, "errorLog": true, "currentNodeInfo": true, "currentNode": true,
-		"currentStatus": true, "approvalURL": true, "submittedBy": true, "openID": true,
-	}
-	var walk func(interface{})
-	walk = func(current interface{}) {
-		switch typed := current.(type) {
-		case map[string]interface{}:
-			for key, nested := range typed {
-				if camel[key] {
-					t.Errorf("camel alias %q leaked in %#v", key, value)
-				}
-				walk(nested)
-			}
-		case []interface{}:
-			for _, nested := range typed {
-				walk(nested)
-			}
-		}
-	}
-	walk(value)
 }
 
 func releaseTestJSONMap(t *testing.T, value interface{}) map[string]interface{} {
