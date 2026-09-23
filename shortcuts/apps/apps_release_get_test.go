@@ -159,6 +159,31 @@ func TestAppsReleaseGetPrettyFailedErrorLogs(t *testing.T) {
 	}
 }
 
+func TestAppsReleaseGetPrettyRejectedAndCanceledErrorLogs(t *testing.T) {
+	for _, status := range []string{"rejected", "canceled"} {
+		t.Run(status, func(t *testing.T) {
+			projection := projectReleaseDetail(map[string]interface{}{
+				"release": map[string]interface{}{
+					"release_id": "release_" + status,
+					"status":     status,
+					"created_at": "1700000000000",
+					"updated_at": "1700000000050",
+				},
+				"error_logs": []interface{}{
+					map[string]interface{}{"step": "release review", "error_log": status + " by reviewer"},
+				},
+			})
+			var out bytes.Buffer
+			writeReleaseDetailPretty(&out, projection)
+			if !strings.Contains(out.String(), "status: "+status) ||
+				!strings.Contains(out.String(), "release review") ||
+				!strings.Contains(out.String(), status+" by reviewer") {
+				t.Fatalf("%s pretty output must include available error_logs:\n%s", status, out.String())
+			}
+		})
+	}
+}
+
 func TestAppsReleaseGetPrettyPublishingNoExtra(t *testing.T) {
 	rctx, stdoutBuf, reg := newStatusRuntimeContext(t, "app_x", "7")
 	rctx.Format = "pretty"

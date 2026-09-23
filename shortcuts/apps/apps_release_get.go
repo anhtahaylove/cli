@@ -112,7 +112,7 @@ func writeReleaseDetailPretty(w io.Writer, projection releaseDetailProjection) {
 		if projection.OnlineURL != "" {
 			fmt.Fprintf(w, "online_url: %s\n", releasePrettyDisplayValue(projection.OnlineURL))
 		}
-	case "failed":
+	case "failed", "rejected", "canceled":
 		writeReleaseErrorLogTable(w, projection.Data["error_logs"])
 	}
 }

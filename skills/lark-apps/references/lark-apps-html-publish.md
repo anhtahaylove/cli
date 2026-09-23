@@ -24,7 +24,7 @@ lark-cli apps +html-publish --app-id app_xxx --path ./index.html --dry-run
 
 ## 输出契约
 
-命令内部完成 tar.gz 打包 → TOS 上传 → 触发发布，返回 `data.release_id`。拿到 `release_id` 后用 `+release-get --app-id <app_id> --release-id <release_id>` 轮询发布状态直到 `finished`，从中读取 `online_url`。
+命令内部完成 tar.gz 打包 → TOS 上传 → 触发发布，返回 `data.release_id`。拿到 `release_id` 后用 `+release-get --app-id <app_id> --release-id <release_id>`，按 [`release-get` 状态规则](lark-apps-release-get.md) 处理 publishing、审批等待和各种终态；只有 `finished` 才从中读取 `online_url`。
 
 - 业务失败如构建失败、应用不存在通常带 `error.hint`；优先转述 hint。网络/服务端失败则建议稍后重试。
 

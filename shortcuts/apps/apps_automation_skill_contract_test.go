@@ -180,7 +180,8 @@ func TestAutomationSkillContract_ChangedHandlerStartWaitsForThisRelease(t *testi
 		"在 Git 已确认/预授权时 commit，然后执行 `git push origin sprint/default`。",
 		"若该命令本身返回错误或未返回 `data.release_id`：视为确认未创建本轮 release（新代码未上线），原本 enabled 的 trigger 恢复 enabled 并回读、原本 disabled 的保持 disabled 后停止；若因超时等导致结果未知，保持 disabled，先用 `+release-list --status finished --page-size 1` 核对是否已产生新 release 再决定。",
 		"只有 `data.status=finished` 才能继续；`publishing` 时每 20 秒继续轮询，整体最多约 5 分钟。",
-		"确认 `failed` 时报告发布失败，原本 enabled 的 trigger 仅在确认新代码未上线后恢复 enabled，原本 disabled 的保持 disabled。",
+		"确认 `failed` / `rejected` / `canceled` 时报告发布或审批未通过，原本 enabled 的 trigger 仅在确认新代码未上线后恢复 enabled，原本 disabled 的保持 disabled。",
+		"遇其他未知 status 时停止自动轮询、保持 disabled 并报告原值，不自行恢复或 enable。",
 		"发布状态仍不确定时不得进入 enable、probe 或状态恢复分支。",
 		"**仅启动**：取得持续启动授权后执行 `+automation-enable`，并用 `+automation-get` 确认 enabled；到此结束，不制造 runtime probe。",
 		"**测试（含“启动并测试”）**：先按下节“运行时验证的操作级授权”完成全部 preflight",
@@ -328,7 +329,8 @@ func TestAutomationSkillContract_PublishedHandlerStaysDisabled(t *testing.T) {
 		"若 `+release-create` 本身返回错误或未返回 `data.release_id`：视为确认未创建本轮 release（新代码未上线），原本 enabled 的 trigger 恢复 enabled 并回读、原本 disabled 的保持 disabled，然后停止；若因超时等导致创建结果未知，保持 disabled，先用 `+release-list --status finished --page-size 1` 核对是否已产生新 release 再决定。",
 		"取得 `data.release_id` 后，先对**这一轮** ID 调用 `+release-get`，每次查询后都先检查当前节点",
 		"节点非 PENDING 且状态为 `publishing` 时，每 20 秒继续查询同一 ID，整体最多约 5 分钟",
-		"确认 `failed` 且新代码未上线时，原本 enabled 的 trigger 恢复 enabled 并回读，原本 disabled 的保持 disabled。",
+		"确认 `failed` / `rejected` / `canceled` 时新代码未上线：原本 enabled 的 trigger 恢复 enabled 并回读，原本 disabled 的保持 disabled。",
+		"遇其他未知 status 时停止自动轮询、保持 disabled 并报告原值，不自行恢复或 enable。",
 		"release 是整个应用上线，可能影响既有线上功能；未获得启动或测试授权时，finished 后始终保持 disabled，不执行 `+automation-enable`。",
 	} {
 		if !strings.Contains(section, boundary) {
@@ -492,8 +494,8 @@ func TestLocalDevSkillContract_DoesNotRequireOnlineURL(t *testing.T) {
 func TestLocalDevSkillContract_TreatsErrorLogsAsOptional(t *testing.T) {
 	section := skillSection(t, readLocalDevSkillDoc(t), "## 改完代码后部署上线")
 
-	if !strings.Contains(section, "`failed` 时若返回非空 `error_logs`，据此给出失败原因；否则只报告 `release_id` 和当前 status，不要编造原因") {
-		t.Error("release guidance must not promise error_logs on every failed release")
+	if !strings.Contains(section, "`failed` / `rejected` / `canceled` 时若返回非空 `error_logs`，据此给出失败或审批结果；否则只报告 `release_id` 和当前 status，不要编造原因") {
+		t.Error("release guidance must not promise error_logs on every unsuccessful release")
 	}
 }
 
@@ -502,10 +504,27 @@ func TestReleaseSkillContract_TreatsOptionalOutputAsOptional(t *testing.T) {
 	for _, boundary := range []string{
 		"`finished` 后才可能有 `online_url`。",
 		"若输出含 `online_url`，直接读取它作为本轮发布的线上访问链接；未返回时只报告发布完成，不要编造链接。",
-		"若输出含 `error_logs`（`step`/`error_log`），据此向用户转述关键失败步骤和可行动修复；未返回时不要编造失败原因。",
+		"若输出含 `error_logs`（`step`/`error_log`），据此向用户转述关键失败步骤或审批结果；未返回时不要编造原因。",
 	} {
 		if !strings.Contains(releaseGet, boundary) {
 			t.Errorf("release-get skill must preserve optional-output boundary %q", boundary)
+		}
+	}
+}
+
+func TestReleaseSkillContract_HandlesKnownAndUnknownTerminalStatuses(t *testing.T) {
+	rules := skillSection(t, readReleaseGetSkillDoc(t), "## Agent 规则")
+	for _, boundary := range []string{
+		"`failed` / `rejected` / `canceled`",
+		"明确本轮没有部署成功",
+		"`current_node_info.current_status` 只有 `PENDING` 会改变轮询策略",
+		"`status` 不是 `publishing`、`finished`、`failed`、`rejected` 或 `canceled`",
+		"停止自动轮询",
+		"不要自行判定成功或失败",
+		"不要新建 release 代替查询",
+	} {
+		if !strings.Contains(rules, boundary) {
+			t.Errorf("release-get terminal-state guidance must preserve %q", boundary)
 		}
 	}
 }
