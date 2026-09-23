@@ -80,7 +80,7 @@ cd ./my-page
 git add .
 git commit -m "feat: ..."
 git push origin sprint/default
-lark-cli apps +release-create --app-id app_xxx
+lark-cli apps +release-create --app-id app_xxx --apply-reason "<已向用户确认的发布理由>"
 ```
 
 #### 已有 app，二次开发/迭代

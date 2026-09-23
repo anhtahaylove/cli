@@ -656,32 +656,30 @@ func TestReleaseSkillContract_ClientUpgradeIsServerDirectedForCreateAndGet(t *te
 	}
 }
 
-func TestReleaseSkillContract_UpdatedWorkflowCreateCommandsCarryReason(t *testing.T) {
-	tests := []struct {
-		name            string
-		doc             string
-		minimumCommands int
-	}{
-		{name: "release-create", doc: readReleaseCreateSkillDoc(t), minimumCommands: 2},
-		{
-			name:            "local-dev deployment",
-			doc:             skillSection(t, readLocalDevSkillDoc(t), "## 改完代码后部署上线"),
-			minimumCommands: 1,
-		},
-		{name: "automation", doc: readAutomationSkillDoc(t), minimumCommands: 2},
+func TestReleaseSkillContract_AllExecutableCreateCommandsCarryReason(t *testing.T) {
+	root := "../../skills/lark-apps"
+	commandCount := 0
+	err := filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() || filepath.Ext(path) != ".md" {
+			return nil
+		}
+		doc := readAppsSkillDoc(t, path)
+		for _, command := range executableReleaseCreateCommands(doc) {
+			commandCount++
+			if !validReleaseApplyReason(command) {
+				t.Errorf("%s: executable release-create command must carry exactly one nonempty --apply-reason: %s", path, command)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", root, err)
 	}
-	for _, testCase := range tests {
-		t.Run(testCase.name, func(t *testing.T) {
-			commands := executableReleaseCreateCommands(testCase.doc)
-			if len(commands) < testCase.minimumCommands {
-				t.Errorf("workflow must expose at least %d executable release-create commands, found %d", testCase.minimumCommands, len(commands))
-			}
-			for _, command := range commands {
-				if !validReleaseApplyReason(command) {
-					t.Errorf("executable release-create command must carry exactly one nonempty --apply-reason: %s", command)
-				}
-			}
-		})
+	if commandCount == 0 {
+		t.Fatal("lark-apps skill must expose at least one executable release-create command")
 	}
 }
 

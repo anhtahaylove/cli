@@ -210,9 +210,9 @@ lark-cli apps +init --app-id <app_id> --dir <任务目录> --as user
 #    遇非 fast-forward：先 git pull --rebase origin sprint/default 解决冲突再推，绝不 force-push
 git add . && git commit -m "feat: ..." && git push origin sprint/default
 
-# 2. 发起部署（记下返回的 release_id），然后轮询状态直到 finished / failed：
+# 2. 确认发布理由后发起部署（记下返回的 release_id），然后按 +release-get 规则处理状态：
 #    publishing → 继续轮询；finished → 输出含可分享的 online_url，直接返回给用户；failed → 按输出中的 error_logs 报告失败原因
-lark-cli apps +release-create --app-id <app_id> --as user
+lark-cli apps +release-create --app-id <app_id> --apply-reason "<已向用户确认的发布理由>" --as user
 lark-cli apps +release-get --app-id <app_id> --release-id <release_id> --as user
 ```
 
