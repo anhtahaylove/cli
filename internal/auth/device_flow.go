@@ -156,9 +156,9 @@ func PollDeviceToken(ctx context.Context, httpClient *http.Client, appId, appSec
 }
 
 // PollDeviceTokenWithMode applies the local three-state DPoP policy. Preferred
-// mode may fall back for local key preparation or clock synchronization errors,
-// before polling sends a Token Endpoint request, or after three consecutive
-// dpop.InvalidProofOAuthError responses. Cancellation never permits fallback.
+// mode may fall back for local DPoP failures before polling sends a Token
+// Endpoint request, or after three consecutive dpop.InvalidProofOAuthError
+// responses. Cancellation never permits fallback.
 func PollDeviceTokenWithMode(ctx context.Context, httpClient *http.Client, appId, appSecret string, brand core.LarkBrand, deviceCode string, interval, expiresIn int, errOut io.Writer, mode core.DPoPMode) (*DeviceFlowResult, error) {
 	return pollDeviceTokenWithKeyStore(ctx, httpClient, appId, appSecret, brand, deviceCode,
 		interval, expiresIn, errOut, mode, dpop.NewKeyStore(nil))
@@ -256,7 +256,7 @@ func deviceFlowFallbackAllowed(result *DeviceFlowResult) bool {
 		return true
 	}
 	problem, ok := errs.ProblemOf(result.Err)
-	return ok && problem.Subtype == errs.SubtypeDPoPClockSyncFailed
+	return ok && (problem.Subtype == errs.SubtypeDPoPProofFailed || problem.Subtype == errs.SubtypeDPoPClockSyncFailed)
 }
 
 func pollDeviceToken(ctx context.Context, httpClient *http.Client, appId, appSecret string, brand core.LarkBrand, deviceCode string, interval, expiresIn int, errOut io.Writer, proofKey *dpop.Key, requestSent *bool, allowProofFallback bool) (*DeviceFlowResult, error) {
