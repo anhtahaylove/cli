@@ -15,9 +15,9 @@ import (
 )
 
 // TestAppsReleaseCreateDryRun pins the public create-release request contract:
-// app_id belongs in the path, the confirmed reason is forwarded verbatim as
-// apply_reason, and an omitted branch stays omitted. Validation failures must
-// stop before a request plan is emitted.
+// app_id belongs in the path, a supplied reason is forwarded verbatim as
+// apply_reason, and omitted optional fields stay omitted. Validation failures
+// must stop before a request plan is emitted.
 func TestAppsReleaseCreateDryRun(t *testing.T) {
 	setAppsDryRunEnv(t)
 
@@ -62,15 +62,16 @@ func TestAppsReleaseCreateDryRun(t *testing.T) {
 		assert.False(t, clie2e.DryRunGet(result.Stdout, "api.0.body.branch").Exists())
 	})
 
-	t.Run("RejectsMissingReason", func(t *testing.T) {
+	t.Run("OmitsReasonForHTMLCompatibleFlow", func(t *testing.T) {
 		result := run(t,
 			"apps", "+release-create",
 			"--app-id", "app_x",
 			"--dry-run",
 		)
-		result.AssertExitCode(t, 2)
-		assert.Contains(t, validateErrorMessage(result), `required flag(s) "apply-reason" not set`)
-		assert.False(t, clie2e.DryRunGet(result.Stdout, "api.0.method").Exists())
+		result.AssertExitCode(t, 0)
+		assert.Equal(t, "POST", clie2e.DryRunGet(result.Stdout, "api.0.method").String())
+		assert.False(t, clie2e.DryRunGet(result.Stdout, "api.0.body.apply_reason").Exists())
+		assert.False(t, clie2e.DryRunGet(result.Stdout, "api.0.body.branch").Exists())
 	})
 
 	t.Run("RejectsBlankReason", func(t *testing.T) {

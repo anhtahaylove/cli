@@ -534,7 +534,10 @@ func TestReleaseSkillContract_CreateReasonIsSafeAndConfirmedOnce(t *testing.T) {
 	rules := skillSection(t, doc, "## Agent 规则")
 
 	requireInOrder(t, rules,
-		"CLI 强制要求 `--apply-reason`",
+		"创意模式 `html` 不需要发布理由",
+		"必须省略 `--apply-reason`",
+		"`frontend` / `full_stack` 必须传 `--apply-reason`",
+		"仅 frontend / full_stack",
 		"非空单行",
 		"最多 1000 个 Unicode code point",
 		"控制字符",
@@ -676,9 +679,10 @@ func TestReleaseSkillContract_ClientUpgradeIsServerDirectedForCreateAndGet(t *te
 	}
 }
 
-func TestReleaseSkillContract_AllExecutableCreateCommandsCarryReason(t *testing.T) {
+func TestReleaseSkillContract_ExecutableCreateCommandsMatchAppTypeReasonPolicy(t *testing.T) {
 	root := "../../skills/lark-apps"
 	commandCount := 0
+	reasonless := make(map[string]bool)
 	err := filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -689,8 +693,12 @@ func TestReleaseSkillContract_AllExecutableCreateCommandsCarryReason(t *testing.
 		doc := readAppsSkillDoc(t, path)
 		for _, command := range executableReleaseCreateCommands(doc) {
 			commandCount++
+			if !strings.Contains(command, "--apply-reason") {
+				reasonless[path+"\x00"+command] = true
+				continue
+			}
 			if !validReleaseApplyReason(command) {
-				t.Errorf("%s: executable release-create command must carry exactly one nonempty --apply-reason: %s", path, command)
+				t.Errorf("%s: supplied --apply-reason must have exactly one nonempty value: %s", path, command)
 			}
 		}
 		return nil
@@ -701,9 +709,23 @@ func TestReleaseSkillContract_AllExecutableCreateCommandsCarryReason(t *testing.
 	if commandCount == 0 {
 		t.Fatal("lark-apps skill must expose at least one executable release-create command")
 	}
+	wantReasonless := map[string]bool{
+		"../../skills/lark-apps/creative-design/creative-design.md\x00lark-cli apps +release-create --app-id <app_id> --as user":                        true,
+		"../../skills/lark-apps/references/lark-apps-local-dev.md\x00lark-cli apps +release-create --app-id app_xxx":                                    true,
+		"../../skills/lark-apps/references/lark-apps-local-dev.md\x00lark-cli apps +release-create --as user --app-id <app_id> --branch sprint/default": true,
+		"../../skills/lark-apps/references/lark-apps-release-create.md\x00lark-cli apps +release-create --app-id app_xxx":                               true,
+	}
+	if len(reasonless) != len(wantReasonless) {
+		t.Fatalf("reasonless release-create commands = %v, want only the four html examples", reasonless)
+	}
+	for command := range wantReasonless {
+		if !reasonless[command] {
+			t.Errorf("missing approved html release-create example %q", command)
+		}
+	}
 }
 
-func TestReleaseSkillContract_ApplyReasonValidatorRejectsInvalidCommands(t *testing.T) {
+func TestReleaseSkillContract_SuppliedApplyReasonValidatorRejectsInvalidCommands(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		command string
 		valid   bool
@@ -775,7 +797,10 @@ func TestAutomationSkillContract_PendingKeepsTriggerDisabled(t *testing.T) {
 func TestAppsSkillContract_RoutesReleaseReasonAndPending(t *testing.T) {
 	section := skillSection(t, readAppsSkillDoc(t, larkAppsSkillDoc), "## 发布态护栏")
 	requireInOrder(t, section,
-		"任何 `+release-create` 前",
+		"发布理由按应用类型处理",
+		"创意模式 `html` 不需要发布理由",
+		"不得传 `--apply-reason`",
+		"`frontend` / `full_stack`",
 		"lark-apps-release-create.md",
 		"生成理由",
 		"已确认的同一理由",

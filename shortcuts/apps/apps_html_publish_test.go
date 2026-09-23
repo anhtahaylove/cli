@@ -5,6 +5,7 @@ package apps
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -780,7 +781,7 @@ func TestRunHTMLPublishTOS_Success(t *testing.T) {
 	})
 
 	// Register release-create API stub.
-	reg.Register(&httpmock.Stub{
+	releaseStub := &httpmock.Stub{
 		Method: "POST",
 		URL:    "/open-apis/spark/v1/apps/app_tos/releases",
 		Body: map[string]interface{}{
@@ -790,7 +791,8 @@ func TestRunHTMLPublishTOS_Success(t *testing.T) {
 				"status":     "publishing",
 			},
 		},
-	})
+	}
+	reg.Register(releaseStub)
 
 	out, err := runHTMLPublishTOS(context.Background(), rt, appsHTMLPublishSpec{
 		AppID: "app_tos",
@@ -801,6 +803,16 @@ func TestRunHTMLPublishTOS_Success(t *testing.T) {
 	}
 	if out["release_id"] != "rel_123" {
 		t.Fatalf("release_id=%v, want rel_123", out["release_id"])
+	}
+	var releaseBody map[string]interface{}
+	if err := json.Unmarshal(releaseStub.CapturedBody, &releaseBody); err != nil {
+		t.Fatalf("decode release body: %v", err)
+	}
+	if len(releaseBody) != 1 || releaseBody["tos_path"] != "tos://bucket/key" {
+		t.Fatalf("html release body=%v, want only tos_path", releaseBody)
+	}
+	if _, ok := releaseBody["apply_reason"]; ok {
+		t.Fatalf("html release body must omit apply_reason: %v", releaseBody)
 	}
 }
 

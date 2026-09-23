@@ -42,6 +42,11 @@ func TestBuildPublishBody(t *testing.T) {
 	if b2["apply_reason"] != "reason" {
 		t.Errorf("apply_reason = %v", b2["apply_reason"])
 	}
+	// apply_reason omitted when the caller does not supply one (html flow)
+	b3 := buildPublishBody("", "")
+	if len(b3) != 0 {
+		t.Errorf("empty optional fields should produce an empty body, got %v", b3)
+	}
 }
 
 func TestValidateReleaseApplyReason(t *testing.T) {
@@ -122,28 +127,49 @@ func TestAppsReleaseCreateMeta(t *testing.T) {
 	for _, flag := range AppsReleaseCreate.Flags {
 		flags[flag.Name] = flag
 	}
-	if !flags["app-id"].Required || !flags["apply-reason"].Required {
-		t.Fatalf("app-id and apply-reason must be required: %+v", flags)
+	if !flags["app-id"].Required || flags["apply-reason"].Required {
+		t.Fatalf("app-id must be required and apply-reason must be optional: %+v", flags)
 	}
-	if flags["apply-reason"].Desc != "release application reason (max 1000 characters)" {
+	if flags["apply-reason"].Desc != "release application reason for frontend/full_stack apps (max 1000 characters; omit for html apps)" {
 		t.Fatalf("apply-reason desc = %q", flags["apply-reason"].Desc)
 	}
 }
 
-func TestAppsReleaseCreateTipsRequireApplyReason(t *testing.T) {
+func TestAppsReleaseCreateTipsDistinguishHTMLReasonPolicy(t *testing.T) {
+	var withReason, withoutReason bool
 	for _, tip := range AppsReleaseCreate.Tips {
-		if strings.Contains(tip, "+release-create") && !strings.Contains(tip, "--apply-reason") {
-			t.Errorf("release-create tip omits required --apply-reason: %q", tip)
+		if !strings.Contains(tip, "+release-create") {
+			continue
 		}
+		if strings.Contains(tip, "--apply-reason") {
+			withReason = true
+		} else {
+			withoutReason = true
+		}
+	}
+	if !withReason || !withoutReason {
+		t.Fatalf("tips must show both html without a reason and frontend/full_stack with a reason: %v", AppsReleaseCreate.Tips)
 	}
 }
 
-func TestAppsReleaseCreateRequiresApplyReason(t *testing.T) {
+func TestAppsReleaseCreateAllowsOmittedApplyReason(t *testing.T) {
 	factory, stdout, _ := newAppsExecuteFactory(t)
-	err := runAppsShortcut(t, AppsReleaseCreate,
-		[]string{"+release-create", "--app-id", "app_x", "--as", "user"}, factory, stdout)
-	if err == nil || !strings.Contains(err.Error(), "apply-reason") {
-		t.Fatalf("expected --apply-reason required error, got %v", err)
+	err := runAppsShortcut(t, AppsReleaseCreate, []string{
+		"+release-create", "--app-id", "app_x", "--dry-run", "--as", "user",
+	}, factory, stdout)
+	if err != nil {
+		t.Fatalf("omitted --apply-reason must be accepted for html releases: %v", err)
+	}
+}
+
+func TestAppsReleaseCreateRejectsExplicitBlankApplyReason(t *testing.T) {
+	factory, stdout, _ := newAppsExecuteFactory(t)
+	err := runAppsShortcut(t, AppsReleaseCreate, []string{
+		"+release-create", "--app-id", "app_x", "--apply-reason", "  ", "--dry-run", "--as", "user",
+	}, factory, stdout)
+	problem := requireAppsValidationProblem(t, err)
+	if problem.Message != "--apply-reason must not be empty" {
+		t.Fatalf("Message = %q", problem.Message)
 	}
 }
 
@@ -253,6 +279,26 @@ func TestAppsReleaseCreateDryRunBody(t *testing.T) {
 	body = env2.Data.API[0].Body
 	if len(body) != 1 || body["apply_reason"] != reason {
 		t.Fatalf("dry-run body without branch = %#v", body)
+	}
+
+	factory3, stdout3, _ := newAppsExecuteFactory(t)
+	if err := runAppsShortcut(t, AppsReleaseCreate, []string{
+		"+release-create", "--app-id", "app_x", "--dry-run", "--as", "user",
+	}, factory3, stdout3); err != nil {
+		t.Fatalf("dry-run without apply reason err=%v", err)
+	}
+	var env3 struct {
+		Data struct {
+			API []struct {
+				Body map[string]interface{} `json:"body"`
+			} `json:"api"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(stdout3.Bytes(), &env3); err != nil {
+		t.Fatalf("decode dry-run without apply reason: %v\n%s", err, stdout3.String())
+	}
+	if len(env3.Data.API) != 1 || len(env3.Data.API[0].Body) != 0 {
+		t.Fatalf("dry-run body without apply reason = %#v", env3.Data.API)
 	}
 }
 
@@ -374,6 +420,32 @@ func TestAppsReleaseCreateExecute_OmitsEmptyBranch(t *testing.T) {
 	}
 	if len(sent) != 1 || sent["apply_reason"] != "reason" {
 		t.Errorf("request body = %v", sent)
+	}
+}
+
+func TestAppsReleaseCreateExecute_OmitsApplyReasonForHTML(t *testing.T) {
+	rctx, _, reg := newReleaseCreateRuntimeContext(t, "app_html", "sprint/default", "")
+	stub := &httpmock.Stub{
+		Method: "POST",
+		URL:    "/open-apis/spark/v1/apps/app_html/releases",
+		Body: map[string]interface{}{
+			"code": 0,
+			"data": map[string]interface{}{"release_id": "html_release"},
+		},
+	}
+	reg.Register(stub)
+	if err := AppsReleaseCreate.Execute(context.Background(), rctx); err != nil {
+		t.Fatalf("Execute() = %v", err)
+	}
+	var sent map[string]interface{}
+	if err := json.Unmarshal(stub.CapturedBody, &sent); err != nil {
+		t.Fatalf("decode request body: %v", err)
+	}
+	if len(sent) != 1 || sent["branch"] != "sprint/default" {
+		t.Errorf("request body = %v", sent)
+	}
+	if _, ok := sent["apply_reason"]; ok {
+		t.Errorf("html request must omit apply_reason: %v", sent)
 	}
 }
 

@@ -22,7 +22,7 @@ var AppsReleaseCreate = common.Shortcut{
 	Description: "Create a release for an app (returns release_id for status polling)",
 	Risk:        "write",
 	Tips: []string{
-		"Example: lark-cli apps +release-create --app-id <app_id> --apply-reason \"release for production fix\"",
+		"Example: lark-cli apps +release-create --app-id <app_id>",
 		"Example: lark-cli apps +release-create --app-id <app_id> --branch sprint/default --apply-reason \"release for production fix\" --dry-run",
 	},
 	Scopes:    []string{"spark:app:write"},
@@ -31,7 +31,7 @@ var AppsReleaseCreate = common.Shortcut{
 	Flags: []common.Flag{
 		{Name: "app-id", Desc: "app ID", Required: true},
 		{Name: "branch", Desc: "release branch (server uses default if omitted)"},
-		{Name: "apply-reason", Desc: "release application reason (max 1000 characters)", Required: true},
+		{Name: "apply-reason", Desc: "release application reason for frontend/full_stack apps (max 1000 characters; omit for html apps)"},
 	},
 	Validate: func(ctx context.Context, rctx *common.RuntimeContext) error {
 		appID := strings.TrimSpace(rctx.Str("app-id"))
@@ -41,8 +41,10 @@ var AppsReleaseCreate = common.Shortcut{
 		if err := validateRealAppID(appID); err != nil {
 			return err
 		}
-		if err := validateReleaseApplyReason(rctx.Str("apply-reason")); err != nil {
-			return err
+		if rctx.Changed("apply-reason") {
+			if err := validateReleaseApplyReason(rctx.Str("apply-reason")); err != nil {
+				return err
+			}
 		}
 		return nil
 	},
@@ -74,11 +76,14 @@ var AppsReleaseCreate = common.Shortcut{
 }
 
 // buildPublishBody builds the create-release request body. app_id is in the
-// path, not the body. branch is included only when non-empty.
+// path, not the body. Optional fields are included only when non-empty.
 func buildPublishBody(branch, applyReason string) map[string]interface{} {
-	body := map[string]interface{}{"apply_reason": applyReason}
+	body := map[string]interface{}{}
 	if branch != "" {
 		body["branch"] = branch
+	}
+	if applyReason != "" {
+		body["apply_reason"] = applyReason
 	}
 	return body
 }
