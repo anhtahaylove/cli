@@ -422,6 +422,113 @@ func TestProjectReleaseDetailSnakeCaseProjection(t *testing.T) {
 	}
 }
 
+func TestProjectReleaseDetailNormalizesBOEApprovalNodeShape(t *testing.T) {
+	data := map[string]interface{}{
+		"release_id": "release_pending", "status": "pending",
+		"created_at": json.Number("1788264000000"), "updated_at": json.Number("1788264060000"),
+		"online_url": "https://example.feishu.cn/app/release_pending",
+		"current_node_info": map[string]interface{}{
+			"currentNode": "approval", "currentStatus": "PENDING",
+			"result": map[string]interface{}{
+				"approvalURL": "https://example.feishu.cn/approval/task/1", "future_result_field": "kept",
+			},
+			"submittedBy": map[string]interface{}{
+				"username": "申请人", "openID": "ou_xxx", "future_submitter_field": true,
+			},
+			"createdAt": json.Number("1788264060"), "future_node_field": "kept",
+		},
+	}
+	before := cloneReleaseTestValue(t, data)
+
+	projection := projectReleaseDetail(data)
+	got := releaseTestJSONMap(t, projection.Data)
+	node := got["current_node_info"].(map[string]interface{})
+	result := node["result"].(map[string]interface{})
+	submitter := node["submitted_by"].(map[string]interface{})
+	if node["current_node"] != "approval" || node["current_status"] != "PENDING" ||
+		node["created_at"] != json.Number("1788264060") ||
+		result["approval_url"] != "https://example.feishu.cn/approval/task/1" ||
+		submitter["username"] != "申请人" || submitter["open_id"] != "ou_xxx" {
+		t.Fatalf("normalized approval node = %#v", node)
+	}
+	for _, key := range []string{"currentNode", "currentStatus", "submittedBy", "createdAt"} {
+		if _, present := node[key]; present {
+			t.Errorf("compatible node key %q leaked into canonical JSON: %#v", key, node)
+		}
+	}
+	if _, present := result["approvalURL"]; present {
+		t.Errorf("compatible result key leaked into canonical JSON: %#v", result)
+	}
+	if _, present := submitter["openID"]; present {
+		t.Errorf("compatible submitter key leaked into canonical JSON: %#v", submitter)
+	}
+	if node["future_node_field"] != "kept" || result["future_result_field"] != "kept" ||
+		submitter["future_submitter_field"] != true {
+		t.Errorf("normalization lost unknown approval fields: %#v", node)
+	}
+	if !reflect.DeepEqual(releaseTestJSONMap(t, data), before) {
+		t.Errorf("projectReleaseDetail mutated BOE input\nbefore=%#v\nafter=%#v", before, releaseTestJSONMap(t, data))
+	}
+
+	var pretty bytes.Buffer
+	writeReleaseDetailPretty(&pretty, projection)
+	for _, line := range []string{
+		"status: pending\n",
+		"current_node: approval\n",
+		"current_status: PENDING\n",
+		"approval_url: https://example.feishu.cn/approval/task/1\n",
+		"submitted_by_username: 申请人\n",
+		"submitted_by_open_id: ou_xxx\n",
+		"current_node_created_at: 1788264060\n",
+	} {
+		if !strings.Contains(pretty.String(), line) {
+			t.Errorf("pretty output missing %q:\n%s", line, pretty.String())
+		}
+	}
+	if strings.Contains(pretty.String(), "online_url:") {
+		t.Errorf("pending online_url must not be presented as deployed:\n%s", pretty.String())
+	}
+}
+
+func TestProjectReleaseDetailApprovalAliasPrecedenceAndFallback(t *testing.T) {
+	projection := projectReleaseDetail(map[string]interface{}{
+		"release_id": "release_aliases",
+		"current_node_info": map[string]interface{}{
+			"current_node": "snake-node", "currentNode": "camel-node",
+			"current_status": 7, "currentStatus": "PENDING",
+			"created_at": "", "createdAt": json.Number("1788264060"),
+			"result": map[string]interface{}{
+				"approval_url": "", "approvalURL": "https://example.feishu.cn/approval/task/fallback",
+			},
+			"submitted_by": "invalid", "submittedBy": map[string]interface{}{
+				"open_id": "ou_snake", "openID": "ou_camel",
+			},
+		},
+	})
+	got := releaseTestJSONMap(t, projection.Data)
+	node := got["current_node_info"].(map[string]interface{})
+	result := node["result"].(map[string]interface{})
+	submitter := node["submitted_by"].(map[string]interface{})
+	if node["current_node"] != "snake-node" {
+		t.Errorf("valid canonical current_node must win: %#v", node)
+	}
+	if node["current_status"] != "PENDING" || node["created_at"] != json.Number("1788264060") {
+		t.Errorf("invalid canonical values must fall back to compatible values: %#v", node)
+	}
+	if result["approval_url"] != "https://example.feishu.cn/approval/task/fallback" {
+		t.Errorf("empty canonical approval_url must fall back: %#v", result)
+	}
+	if submitter["open_id"] != "ou_snake" {
+		t.Errorf("valid canonical open_id must win: %#v", submitter)
+	}
+	if projection.CurrentNode == nil || projection.CurrentNode.CurrentNode != "snake-node" ||
+		projection.CurrentNode.CurrentStatus != "PENDING" || projection.CurrentNode.Result == nil ||
+		projection.CurrentNode.Result.ApprovalURL != "https://example.feishu.cn/approval/task/fallback" ||
+		projection.CurrentNode.SubmittedBy == nil || projection.CurrentNode.SubmittedBy.OpenID != "ou_snake" {
+		t.Errorf("typed approval node did not consume canonical values: %#v", projection.CurrentNode)
+	}
+}
+
 func TestProjectReleaseDetailOptionalNestedObjects(t *testing.T) {
 	tests := []struct {
 		name  string

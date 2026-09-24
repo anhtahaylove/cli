@@ -67,6 +67,7 @@ func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 	}
 	rawCurrentNode, currentNodePresent := releaseDetailAuxiliaryField(data, releaseRoot, "current_node_info")
 	if currentNodePresent {
+		rawCurrentNode = normalizeReleaseCurrentNodeInfo(rawCurrentNode)
 		out["current_node_info"] = rawCurrentNode
 	} else {
 		delete(out, "current_node_info")
@@ -85,16 +86,91 @@ func projectReleaseDetail(data map[string]interface{}) releaseDetailProjection {
 	}
 }
 
-// releaseDetailAuxiliaryField selects an auxiliary release field without
-// rewriting its wire shape. Newer responses put approval context and failure
-// logs next to the release object, while compatible responses may keep them
-// inside release. The outer value wins when both are present.
+// releaseDetailAuxiliaryField selects an auxiliary release field. Newer
+// responses put approval context and failure logs next to the release object,
+// while compatible responses may keep them inside release. The outer value
+// wins when both are present.
 func releaseDetailAuxiliaryField(outer, releaseRoot map[string]interface{}, key string) (interface{}, bool) {
 	if value, present := outer[key]; present {
 		return value, true
 	}
 	value, present := releaseRoot[key]
 	return value, present
+}
+
+// normalizeReleaseCurrentNodeInfo adapts the mixed casing returned by the
+// release service into the shortcut's stable snake_case output contract. It
+// preserves unknown fields and does not mutate the gateway response.
+func normalizeReleaseCurrentNodeInfo(raw interface{}) interface{} {
+	node, ok := raw.(map[string]interface{})
+	if !ok {
+		return raw
+	}
+
+	normalized := cloneReleaseMap(node)
+	normalizeReleaseAlias(normalized, node, "current_node", "currentNode", releaseNonEmptyString)
+	normalizeReleaseAlias(normalized, node, "current_status", "currentStatus", releaseNonEmptyString)
+	normalizeReleaseAlias(normalized, node, "created_at", "createdAt", releaseNonNilValue)
+	normalizeReleaseAlias(normalized, node, "submitted_by", "submittedBy", releaseMapValue)
+
+	if result, ok := normalized["result"].(map[string]interface{}); ok {
+		normalizedResult := cloneReleaseMap(result)
+		normalizeReleaseAlias(normalizedResult, result, "approval_url", "approvalURL", releaseNonEmptyString)
+		normalized["result"] = normalizedResult
+	}
+	if submitter, ok := normalized["submitted_by"].(map[string]interface{}); ok {
+		normalizedSubmitter := cloneReleaseMap(submitter)
+		normalizeReleaseAlias(normalizedSubmitter, submitter, "open_id", "openID", releaseNonEmptyString)
+		normalized["submitted_by"] = normalizedSubmitter
+	}
+
+	return normalized
+}
+
+func cloneReleaseMap(source map[string]interface{}) map[string]interface{} {
+	cloned := make(map[string]interface{}, len(source))
+	for key, value := range source {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func normalizeReleaseAlias(
+	normalized, source map[string]interface{},
+	canonicalKey, compatibleKey string,
+	isValid func(interface{}) bool,
+) {
+	canonicalValue, canonicalPresent := source[canonicalKey]
+	compatibleValue, compatiblePresent := source[compatibleKey]
+	delete(normalized, compatibleKey)
+
+	switch {
+	case canonicalPresent && isValid(canonicalValue):
+		normalized[canonicalKey] = canonicalValue
+	case compatiblePresent && isValid(compatibleValue):
+		normalized[canonicalKey] = compatibleValue
+	case canonicalPresent:
+		normalized[canonicalKey] = canonicalValue
+	case compatiblePresent:
+		normalized[canonicalKey] = compatibleValue
+	}
+}
+
+func releaseNonEmptyString(value interface{}) bool {
+	text, ok := value.(string)
+	return ok && text != ""
+}
+
+func releaseNonNilValue(value interface{}) bool {
+	if text, ok := value.(string); ok {
+		return text != ""
+	}
+	return value != nil
+}
+
+func releaseMapValue(value interface{}) bool {
+	_, ok := value.(map[string]interface{})
+	return ok
 }
 
 func projectReleaseCurrentNodeInfo(raw interface{}) *releaseCurrentNodeInfo {

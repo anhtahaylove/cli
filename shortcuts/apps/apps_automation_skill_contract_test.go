@@ -327,7 +327,7 @@ func TestAutomationSkillContract_PublishedHandlerStaysDisabled(t *testing.T) {
 		"按项目 guide 完成同名业务 handler 并本地验证后，commit、`git push origin sprint/default`。",
 		"随后发布完整应用：",
 		"若 `+release-create` 本身返回错误或未返回 `data.release_id`：视为确认未创建本轮 release（新代码未上线），原本 enabled 的 trigger 恢复 enabled 并回读、原本 disabled 的保持 disabled，然后停止；若因超时等导致创建结果未知，保持 disabled，先用 `+release-list --status finished --page-size 1` 核对是否已产生新 release 再决定。",
-		"取得 `data.release_id` 后，先对**这一轮** ID 调用 `+release-get`，每次查询后都先检查当前节点",
+		"取得 `data.release_id` 后，先对**这一轮** ID 调用 `+release-get`，每次查询后先按顶层 status 识别终态",
 		"节点非 PENDING 且状态为 `publishing` 时，每 20 秒继续查询同一 ID，整体最多约 5 分钟",
 		"确认 `failed` 时新代码未上线：原本 enabled 的 trigger 恢复 enabled 并回读，原本 disabled 的保持 disabled。",
 		"遇其他未知 status 时停止自动轮询、保持 disabled 并报告原值，不自行恢复或 enable。",
@@ -502,7 +502,7 @@ func TestLocalDevSkillContract_TreatsErrorLogsAsOptional(t *testing.T) {
 func TestReleaseSkillContract_TreatsOptionalOutputAsOptional(t *testing.T) {
 	releaseGet := readReleaseGetSkillDoc(t)
 	for _, boundary := range []string{
-		"`finished` 后才可能有 `online_url`。",
+		"只有当这个 `release_id` 已返回 `finished`，随后读到的 `online_url` 才能被表述为“本轮发布后的访问链接”。",
 		"若输出含 `online_url`，直接读取它作为本轮发布的线上访问链接；未返回时只报告发布完成，不要编造链接。",
 		"若输出含 `error_logs`（`step`/`error_log`），据此向用户转述关键失败步骤和可行动修复；未返回时不要编造失败原因。",
 	} {
@@ -517,8 +517,12 @@ func TestReleaseSkillContract_HandlesKnownAndUnknownStatuses(t *testing.T) {
 	for _, boundary := range []string{
 		"`failed` 按 `error_logs` 的可选输出规则报告",
 		"明确本轮没有部署成功",
-		"`current_node_info.current_status` 只有 `PENDING` 会改变轮询策略",
-		"`status` 不是 `publishing`、`finished` 或 `failed`",
+		"`status=finished` 或 `status=failed`",
+		"即使 `current_node_info.current_status` 仍是 `PENDING`",
+		"`status=pending` 且没有明确的 `current_node_info.current_status=PENDING`",
+		"不要自行补出审批人、审批链接或创建新 release",
+		"`status` 不是 `publishing`、`pending`、`finished` 或 `failed`",
+		"除 `PENDING` 外，不用其它 `current_node_info.current_status` 值推断发布结果",
 		"停止自动轮询",
 		"不要自行判定成功或失败",
 		"不要新建 release 代替查询",
@@ -573,14 +577,18 @@ func TestReleaseSkillContract_GetStopsAtPendingBeforePolling(t *testing.T) {
 	rules := skillSection(t, readReleaseGetSkillDoc(t), "## Agent 规则")
 
 	requireInOrder(t, rules,
+		"`status=finished` 或 `status=failed`",
+		"`current_node_info.current_status` 仍是 `PENDING`",
+		"`current_node_info.current_status == PENDING`",
+		"立即停止轮询",
+		"不要求顶层 `status` 必须是 `publishing`",
+		"`status=pending`",
+		"等待服务端配置的审批负责人处理",
+		"不是失败或超时",
 		"`status=publishing` 且 `current_node_info.current_status != PENDING`",
 		"同一个 `release_id`",
 		"每约 20 秒",
 		"总计约 5 分钟",
-		"`status=publishing` 且 `current_node_info.current_status == PENDING`",
-		"立即停止轮询",
-		"等待服务端配置的审批负责人处理",
-		"不是失败或超时",
 	)
 	for _, boundary := range []string{
 		"不得假定当前用户或 `submitted_by` 是审批人",
@@ -749,11 +757,14 @@ func TestLocalDevSkillContract_PendingHandsBackSameRelease(t *testing.T) {
 	section := skillSection(t, readLocalDevSkillDoc(t), "## 改完代码后部署上线")
 	requireFirstOccurrencesInOrder(t, section,
 		"+release-get",
+		"顶层 status 识别终态",
 		"`current_node_info.current_status=PENDING`",
 		"`publishing`",
 	)
 	requireInOrder(t, section,
+		"`finished` / `failed` 优先于可能残留的 PENDING 节点",
 		"`current_node_info.current_status=PENDING`",
+		"顶层可能是 `publishing` 或 `pending`",
 		"立即停止本轮轮询",
 		"保留同一个 `release_id`",
 		"告知当前用户正在等待审批负责人处理",
@@ -763,6 +774,8 @@ func TestLocalDevSkillContract_PendingHandsBackSameRelease(t *testing.T) {
 		"不得自动审批或写回发布节点",
 		"不得新建另一轮 release",
 		"`publishing` 时每 20 秒继续轮询",
+		"`status=pending` 但没有明确 PENDING 节点时停止自动轮询",
+		"`pending` 响应里即使提前出现 `online_url` 也不能视为本轮部署完成",
 	)
 }
 
@@ -774,12 +787,14 @@ func TestAutomationSkillContract_PendingKeepsTriggerDisabled(t *testing.T) {
 		section := skillSubsection(t, readAutomationSkillDoc(t), heading)
 		requireFirstOccurrencesInOrder(t, section,
 			"+release-get",
-			"每次查询后都先检查当前节点",
+			"每次查询后先按顶层 status 识别终态",
 			"`current_node_info.current_status=PENDING`",
 			"`publishing`",
 		)
 		requireInOrder(t, section,
+			"`finished` / `failed` 优先于可能残留的 PENDING 节点",
 			"`current_node_info.current_status=PENDING`",
+			"顶层可能是 `publishing` 或 `pending`",
 			"立即停止本轮轮询",
 			"保持 trigger disabled",
 			"同一个 `release_id`",
@@ -790,6 +805,8 @@ func TestAutomationSkillContract_PendingKeepsTriggerDisabled(t *testing.T) {
 			"不得 enable、probe 或恢复状态",
 			"不得自动审批、写回发布节点或创建新 release",
 			"`publishing`",
+			"`status=pending` 但没有明确 PENDING 节点时停止自动轮询",
+			"即使响应已带 `online_url` 也不算部署完成",
 		)
 	}
 }
