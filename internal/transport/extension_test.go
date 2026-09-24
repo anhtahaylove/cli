@@ -259,7 +259,7 @@ func TestHTTPPolicyRouterRewriteErrorIncludesSafeEffectiveURL(t *testing.T) {
 		}),
 	})
 
-	cause := errors.New("connection closed")
+	cause := context.DeadlineExceeded
 	transport := WrapWithExtensionForClass(roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return nil, cause
 	}), exttransport.RequestClassPlatform)
@@ -270,6 +270,10 @@ func TestHTTPPolicyRouterRewriteErrorIncludesSafeEffectiveURL(t *testing.T) {
 	if err == nil {
 		t.Fatal("RoundTrip() error = nil")
 	}
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) || !urlErr.Timeout() {
+		t.Fatalf("request lost timeout semantics: %v", err)
+	}
 	typed := errs.NewAuthenticationError(errs.SubtypeUnknown, "failed to get user info: %v", err).WithCause(err)
 	var buf bytes.Buffer
 	if !output.WriteTypedErrorEnvelope(&buf, typed, "user") {
@@ -279,13 +283,42 @@ func TestHTTPPolicyRouterRewriteErrorIncludesSafeEffectiveURL(t *testing.T) {
 	if err := json.Unmarshal(buf.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := envelope.Error.Message, `failed to get user info: Get "https://mirror.example.test/open-apis/test": connection closed`; got != want {
+	if got, want := envelope.Error.Message, `failed to get user info: Get "https://mirror.example.test/open-apis/test": context deadline exceeded`; got != want {
 		t.Fatalf("rendered error = %q, want %q", got, want)
 	}
 	if !errors.Is(typed, cause) || typed.Message == envelope.Error.Message {
 		t.Fatal("rendering must preserve the cause and leave the original error unchanged")
 	}
 }
+
+func TestInvalidRewriteRedactsErrorAndClosesBody(t *testing.T) {
+	registerTestProvider(t, rewriteTestProvider{rewriter: rewriteFunc(func(string) string {
+		return "https://mirror.example.test/%zz?token=synthetic-secret"
+	})})
+	body := &trackedRequestBody{Reader: strings.NewReader("payload")}
+	req := httptest.NewRequest(http.MethodPost, "https://source.example.test/path", body)
+	transport := WrapWithExtensionForClass(roundTripFunc(func(*http.Request) (*http.Response, error) {
+		t.Fatal("invalid URL reached transport")
+		return nil, nil
+	}), exttransport.RequestClassPlatform)
+	_, err := transport.RoundTrip(req)
+	problem, ok := errs.ProblemOf(err)
+	var parseErr *url.Error
+	if !ok || problem.Subtype != errs.SubtypeNetworkTransport || !errors.As(err, &parseErr) || !body.closed {
+		t.Fatalf("error = %v, body closed = %v", err, body.closed)
+	}
+	var out bytes.Buffer
+	if !output.WriteTypedErrorEnvelope(&out, err, "") || strings.Contains(out.String(), "synthetic-secret") {
+		t.Fatalf("unsafe error output: %s", out.String())
+	}
+}
+
+type trackedRequestBody struct {
+	io.Reader
+	closed bool
+}
+
+func (b *trackedRequestBody) Close() error { b.closed = true; return nil }
 
 func TestHTTPPolicyRouterRewritesPlatformButPreservesExternalURL(t *testing.T) {
 	interceptor := &testHeaderInterceptor{}
