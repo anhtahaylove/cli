@@ -5,12 +5,14 @@ package distribution
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/larksuite/cli/errs"
 	exttransport "github.com/larksuite/cli/extension/transport"
 	internaltransport "github.com/larksuite/cli/internal/transport"
 )
@@ -121,6 +123,21 @@ func TestParseManifestAcceptsHTTPArtifacts(t *testing.T) {
 	input := strings.ReplaceAll(validManifestJSON("1"), "https://", "http://")
 	if _, err := parseManifest([]byte(input), "test-os"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestFetchManifestPreservesHTTPErrorMetadata(t *testing.T) {
+	previous := DefaultClient
+	DefaultClient = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusServiceUnavailable,
+			Header: http.Header{"Retry-After": {"60"}}, Body: http.NoBody}, nil
+	})}
+	t.Cleanup(func() { DefaultClient = previous })
+	_, err := (Source{manifestURL: "https://dist.example/manifest.json"}).FetchManifest(context.Background())
+	var networkErr *errs.NetworkError
+	if !errors.As(err, &networkErr) || networkErr.Subtype != errs.SubtypeNetworkServer ||
+		networkErr.Code != 503 || !networkErr.Retryable || networkErr.RetryAfterSeconds != 60 {
+		t.Fatalf("lost HTTP error metadata: %#v", err)
 	}
 }
 

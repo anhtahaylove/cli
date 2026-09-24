@@ -40,6 +40,7 @@ func (p doctorManifestProvider) ResolveManifestURL(context.Context) string {
 }
 
 func TestCheckCLIUpdateReportsDifferentOpaqueManifestTarget(t *testing.T) {
+	t.Setenv("LARKSUITE_CLI_CONFIG_DIR", t.TempDir())
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"schema":1,"version":"older-channel","artifacts":{"skills":{"url":"https://distribution.example/skills.zip","checksum":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},%q:{"url":"https://distribution.example/cli.zip","checksum":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}}`, distribution.CurrentPlatformKey())
 	}))

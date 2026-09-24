@@ -95,6 +95,10 @@ func CurrentPlatformKey() string { return PlatformKey(runtime.GOOS, runtime.GOAR
 func (s Source) FetchManifest(ctx context.Context) (*Manifest, errs.TypedError) {
 	body, err := fetchManifestBody(ctx, s.manifestURL)
 	if err != nil {
+		var typed errs.TypedError
+		if errors.As(err, &typed) {
+			return nil, typed
+		}
 		return nil, errs.NewNetworkError(errs.SubtypeNetworkTransport, "failed to fetch distribution manifest: %s", err).
 			WithCause(err)
 	}

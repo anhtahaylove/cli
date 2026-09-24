@@ -50,18 +50,17 @@ func callReplaceFilePath(targetPath, replacementPath, backupPath string) error {
 	if err != nil {
 		return err
 	}
-	var backup uintptr
+	var backup *uint16
 	if backupPath != "" {
-		ptr, err := windows.UTF16PtrFromString(backupPath)
+		backup, err = windows.UTF16PtrFromString(backupPath)
 		if err != nil {
 			return err
 		}
-		backup = uintptr(unsafe.Pointer(ptr))
 	}
 	if result, _, callErr := replaceFile.Call(
 		uintptr(unsafe.Pointer(target)),
 		uintptr(unsafe.Pointer(replacement)),
-		backup,
+		uintptr(unsafe.Pointer(backup)),
 		0, 0, 0,
 	); result == 0 {
 		return fmt.Errorf("ReplaceFileW: %w", callErr)

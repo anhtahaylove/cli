@@ -51,6 +51,15 @@ func TestInstallPreparedRejectsConcurrentUpdate(t *testing.T) {
 	}
 }
 
+func TestArtifactErrorPreservesTypedCause(t *testing.T) {
+	cause := errs.NewNetworkError(errs.SubtypeNetworkTimeout, "download timed out").
+		WithRetryable().WithCause(context.DeadlineExceeded)
+	got := classifyArtifactError("download", SkillsKey, fmt.Errorf("download: %w", cause))
+	if got != cause || !errors.Is(got, context.DeadlineExceeded) {
+		t.Fatalf("typed download error was reclassified: %#v", got)
+	}
+}
+
 func TestInstallDownloadsAndCommitsManifestArtifacts(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("LARKSUITE_CLI_CONFIG_DIR", filepath.Join(root, "config"))

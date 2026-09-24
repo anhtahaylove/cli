@@ -229,10 +229,13 @@ func prepareArtifact(ctx context.Context, manifest *Manifest, key, root, directo
 	return destination, nil
 }
 
-// classifyArtifactError attributes an artifact-stage failure: local file I/O
-// is FileIO; fetch, size-limit, checksum, and archive-format failures mean the
-// delivered artifact is missing or broken and are reported as network/protocol.
+// classifyArtifactError preserves typed failures, classifies local file I/O as
+// FileIO, and reports other invalid-artifact failures as network/protocol.
 func classifyArtifactError(stage, key string, err error) errs.TypedError {
+	var typed errs.TypedError
+	if errors.As(err, &typed) {
+		return typed
+	}
 	var pathErr *os.PathError
 	if errors.As(err, &pathErr) {
 		return prepareFileError(err)
