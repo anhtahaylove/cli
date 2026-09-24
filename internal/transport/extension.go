@@ -5,10 +5,11 @@ package transport
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/url"
 
+	"github.com/larksuite/cli/errs"
 	exttransport "github.com/larksuite/cli/extension/transport"
 	"github.com/larksuite/cli/internal/urlrewrite"
 )
@@ -125,7 +126,12 @@ func (m *ExtensionMiddleware) RoundTrip(req *http.Request) (*http.Response, erro
 		if rewritten != req.URL.String() {
 			rewrittenURL, err := url.Parse(rewritten)
 			if err != nil {
-				return nil, fmt.Errorf("extension %q rewrote request URL to an invalid value: %w", m.ExtName, err)
+				if req.Body != nil {
+					_ = req.Body.Close()
+				}
+				// Parse errors contain the full input, which may include credentials.
+				return nil, errs.NewNetworkError(errs.SubtypeNetworkTransport,
+					"extension %q rewrote request URL to an invalid value", m.ExtName).WithCause(err)
 			}
 			req.URL = rewrittenURL
 			req.Host = rewrittenURL.Host
@@ -182,6 +188,11 @@ var _ urlrewrite.RequestError = (*effectiveRequestError)(nil)
 func (e *effectiveRequestError) Error() string               { return e.cause.Error() }
 func (e *effectiveRequestError) Unwrap() error               { return e.cause }
 func (e *effectiveRequestError) EffectiveRequestURL() string { return e.url }
+
+func (e *effectiveRequestError) Timeout() bool {
+	var timeout interface{ Timeout() bool }
+	return errors.As(e.cause, &timeout) && timeout.Timeout()
+}
 
 // WrapWithExtension wraps base with the currently registered request
 // interceptor. Callers that need automatic platform URL rewriting use
